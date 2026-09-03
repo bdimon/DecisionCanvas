@@ -1,9 +1,169 @@
 import { AnalysisResult } from '../types';
 
-export function generateLocalAnalysis(option1: string, option2: string, context?: string): AnalysisResult {
-  const opt1 = option1.trim() || 'Вариант 1';
-  const opt2 = option2.trim() || 'Вариант 2';
+export function generateLocalAnalysis(
+  option1: string,
+  option2: string,
+  context?: string,
+  language: 'ru' | 'en' = 'ru'
+): AnalysisResult {
+  const isEn = language === 'en';
+  const opt1 = option1.trim() || (isEn ? 'Option A' : 'Вариант 1');
+  const opt2 = option2.trim() || (isEn ? 'Option B' : 'Вариант 2');
 
+  if (isEn) {
+    return {
+      id: 'analysis-' + Date.now(),
+      createdAt: new Date().toISOString(),
+      option1Title: opt1,
+      option2Title: opt2,
+      context: context?.trim() || undefined,
+      prosCons: {
+        option1: {
+          pros: [
+            { id: 'p1_1', text: `Predictability, reliability, and established footing: "${opt1}"`, weight: 4, category: 'Stability' },
+            { id: 'p1_2', text: `Lower operational ambiguity and minimal transition friction`, weight: 4, category: 'Risk' },
+            { id: 'p1_3', text: `Transparent budgeting and predictable runway usage`, weight: 3, category: 'Resources' },
+            { id: 'p1_4', text: `Preservation of existing organizational momentum and workflows`, weight: 3, category: 'Comfort' }
+          ],
+          cons: [
+            { id: 'c1_1', text: `Potential opportunity cost from delayed innovation or scaling`, weight: 4, category: 'Growth' },
+            { id: 'c1_2', text: `Risk of gradual stagnation against agile market competitors`, weight: 4, category: 'Strategy' },
+            { id: 'c1_3', text: `Capped upside potential and constrained ceiling`, weight: 3, category: 'Efficiency' }
+          ]
+        },
+        option2: {
+          pros: [
+            { id: 'p2_1', text: `High upside scaling potential and asymmetric long-term payoff`, weight: 5, category: 'Upside' },
+            { id: 'p2_2', text: `Rapid capability building, modern skill adoption, and agility`, weight: 4, category: 'Development' },
+            { id: 'p2_3', text: `Opportunity to seize leadership positioning in an emerging domain`, weight: 4, category: 'Strategy' },
+            { id: 'p2_4', text: `High motivational velocity and ambitious organizational alignment`, weight: 3, category: 'Energy' }
+          ],
+          cons: [
+            { id: 'c2_1', text: `Elevated variance and requirement for disciplined resilience`, weight: 4, category: 'Risk' },
+            { id: 'c2_2', text: `Heavier initial upfront commitment of capital, focus, or hours`, weight: 4, category: 'Cost' },
+            { id: 'c2_3', text: `Higher reversal friction should circumstances necessitate pivot`, weight: 3, category: 'Complexity' }
+          ]
+        }
+      },
+      comparisonTable: [
+        {
+          id: 'crit-1',
+          category: 'Finance & Capital',
+          title: 'Upfront Capital & Resource Threshold',
+          description: 'Magnitude of initial capital, infrastructure, and hours required to execute',
+          weight: 4,
+          option1Score: 8,
+          option1Note: 'Low-to-moderate barrier with predictable, transparent budget allocation',
+          option2Score: 5,
+          option2Note: 'Substantial upfront investment needed to establish traction'
+        },
+        {
+          id: 'crit-2',
+          category: 'Risk & Reversibility',
+          title: 'Risk Profile and Rollback Ease',
+          description: 'Downside exposure and ability to pivot back without catastrophic loss',
+          weight: 5,
+          option1Score: 8,
+          option1Note: 'Known variables, robust safety margins, smooth pivot path',
+          option2Score: 6,
+          option2Note: 'Higher volatility; pivots carry noticeable transition costs'
+        },
+        {
+          id: 'crit-3',
+          category: 'Strategic Upside',
+          title: 'Long-term Growth Ceiling & Multiplier',
+          description: 'Compounded enterprise value and competitive advantage across a 3–5 year horizon',
+          weight: 5,
+          option1Score: 5,
+          option1Note: 'Linear, steady increments without explosive multiplier potential',
+          option2Score: 9,
+          option2Note: 'Substantial compound upside if execution discipline is maintained'
+        },
+        {
+          id: 'crit-4',
+          category: 'Execution Friction',
+          title: 'Operational Stress & Team Bandwidth',
+          description: 'Burden imposed on current daily schedules and stress baseline',
+          weight: 3,
+          option1Score: 7,
+          option1Note: 'Maintains familiar equilibrium with minimal cognitive overload',
+          option2Score: 5,
+          option2Note: 'Steep learning curve demanding temporary stretch outside comfort zone'
+        },
+        {
+          id: 'crit-5',
+          category: 'Agility & Autonomy',
+          title: 'Strategic Flexibility & Market Adaptability',
+          description: 'Ease of adjusting direction as external market dynamics fluctuate',
+          weight: 4,
+          option1Score: 6,
+          option1Note: 'Constrained autonomy bound by legacy conventions',
+          option2Score: 8,
+          option2Note: 'High responsiveness with autonomy to restructure fast'
+        }
+      ],
+      swot: {
+        option1: {
+          strengths: [
+            'Proven operational foundation with audited, predictable rules',
+            'Minimal exposure to critical systemic mistakes',
+            'Resilient against adverse macroeconomic volatility'
+          ],
+          weaknesses: [
+            'Slow compounding rate and conservative velocity',
+            'Vulnerability to employee burnout from repetitive routine',
+            'Dependencies on status-quo market conditions'
+          ],
+          opportunities: [
+            'Steady accrual of reserves while preparing a targeted future leap',
+            'Solidifying defensibility within a familiar niche'
+          ],
+          threats: [
+            'Gradual obsolescence under pressure from agile disruptors',
+            'Unrealized strategic upside leading to talent attrition'
+          ]
+        },
+        option2: {
+          strengths: [
+            'Aggressive growth trajectory with dynamic forward momentum',
+            'Preempting competitor movement with modern best practices',
+            'High psychological engagement and team ownership'
+          ],
+          weaknesses: [
+            'Heightened sensitivity to execution missteps in early phases',
+            'Absence of historic precedent requiring frequent iterations'
+          ],
+          opportunities: [
+            'Breakthrough into a dominant market or career tier',
+            'Creating sustainable defensible moat for years ahead'
+          ],
+          threats: [
+            'Premature resource burn before positive unit economics are unlocked',
+            'Unanticipated external regulatory or macroeconomic shocks'
+          ]
+        }
+      },
+      verdict: {
+        winner: 'option2',
+        winnerTitle: opt2,
+        confidenceScore: 74,
+        summary: `Upon multi-criteria evaluation, "${opt2}" presents superior strategic leverage and compounded return, provided downside volatility is actively managed. While "${opt1}" offers defensive stability in the near term, it suffers from a constrained ceiling.`,
+        keyDrivers: [
+          `Clear strategic dominance in 3-5 year growth multiplier`,
+          `High-value opportunity capture over defensive status-quo`,
+          `Healthy risk-adjusted return when backed by a safety runway`
+        ],
+        tradeOffSummary: `By opting for "${opt2}", you exchange near-term tranquility for long-term breakout capability. Staged milestone rollout is strongly advised to keep downside bounded.`,
+        recommendedNextSteps: [
+          `Define unambiguous 30/60/90-day progress milestones for "${opt2}"`,
+          `Formalize contingency safeguards and downside circuit-breakers`,
+          `Lock in the commitment by executing the top 3 tactical actions within 7 calendar days`
+        ]
+      }
+    };
+  }
+
+  // Default Russian generator
   return {
     id: 'analysis-' + Date.now(),
     createdAt: new Date().toISOString(),

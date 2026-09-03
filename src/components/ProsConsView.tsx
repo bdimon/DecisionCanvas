@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { CheckCircle2, XCircle, Plus, Trash2, ShieldAlert, Award } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { ProsConsResult, ProConItem } from '../types';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface ProsConsViewProps {
   prosCons: ProsConsResult;
@@ -15,6 +16,7 @@ export const ProsConsView: React.FC<ProsConsViewProps> = ({
   option2Title,
   onChange,
 }) => {
+  const { language, t } = useLanguage();
   const [newText, setNewText] = useState<{ [key: string]: string }>({});
   const [newWeight, setNewWeight] = useState<{ [key: string]: number }>({});
   const [activeForm, setActiveForm] = useState<string | null>(null);
@@ -39,7 +41,7 @@ export const ProsConsView: React.FC<ProsConsViewProps> = ({
       id: `${type[0]}_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
       text,
       weight,
-      category: 'Пользовательский'
+      category: language === 'en' ? 'Custom' : 'Пользовательский'
     };
 
     const updated = {
@@ -70,8 +72,7 @@ export const ProsConsView: React.FC<ProsConsViewProps> = ({
     title: string,
     target: 'option1' | 'option2',
     type: 'pros' | 'cons',
-    items: ProConItem[],
-    accentColor: 'emerald' | 'rose'
+    items: ProConItem[]
   ) => {
     const isPro = type === 'pros';
     const formKey = `${target}_${type}`;
@@ -89,7 +90,7 @@ export const ProsConsView: React.FC<ProsConsViewProps> = ({
             <span>{title} ({items.length})</span>
           </p>
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isPro ? 'bg-emerald-100/80 text-emerald-800' : 'bg-rose-100/80 text-rose-800'}`}>
-            Вес: {items.reduce((a, b) => a + b.weight, 0)} б.
+            {t.prosCons.weight}: {items.reduce((a, b) => a + b.weight, 0)}
           </span>
         </div>
 
@@ -110,7 +111,7 @@ export const ProsConsView: React.FC<ProsConsViewProps> = ({
                 <p className="leading-snug text-slate-800 text-xs sm:text-sm">{item.text}</p>
                 <div className="mt-1 flex items-center space-x-2">
                   <span className="text-[10px] font-medium text-slate-400">
-                    Сила:
+                    {t.prosCons.weightLabel}:
                   </span>
                   <div className="flex items-center space-x-0.5">
                     {[1, 2, 3, 4, 5].map(w => (
@@ -133,8 +134,8 @@ export const ProsConsView: React.FC<ProsConsViewProps> = ({
               <button
                 type="button"
                 onClick={() => handleDeleteItem(target, type, item.id)}
-                className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-rose-600 transition-opacity self-start"
-                title="Удалить аргумент"
+                className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-rose-600 transition-opacity self-start cursor-pointer"
+                title={language === 'en' ? 'Delete item' : 'Удалить аргумент'}
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
@@ -149,7 +150,7 @@ export const ProsConsView: React.FC<ProsConsViewProps> = ({
               type="text"
               value={newText[formKey] || ''}
               onChange={(e) => setNewText(prev => ({ ...prev, [formKey]: e.target.value }))}
-              placeholder={isPro ? "Введите новый аргумент «За»..." : "Введите новый аргумент «Против»..."}
+              placeholder={isPro ? (language === 'en' ? 'Enter new advantage...' : 'Введите новый аргумент «За»...') : (language === 'en' ? 'Enter new risk or downside...' : 'Введите новый аргумент «Против»...')}
               className="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-indigo-500"
               autoFocus
               onKeyDown={(e) => {
@@ -161,33 +162,33 @@ export const ProsConsView: React.FC<ProsConsViewProps> = ({
             />
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-1.5 text-xs text-slate-500">
-                <span className="text-[11px] font-medium">Важность:</span>
+                <span className="text-[11px] font-medium">{t.prosCons.weight}:</span>
                 <select
                   value={newWeight[formKey] || 3}
                   onChange={(e) => setNewWeight(prev => ({ ...prev, [formKey]: Number(e.target.value) }))}
                   className="text-xs bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-slate-700"
                 >
-                  <option value={1}>1 - Низкая</option>
-                  <option value={2}>2 - Умеренная</option>
-                  <option value={3}>3 - Средняя</option>
-                  <option value={4}>4 - Высокая</option>
-                  <option value={5}>5 - Критическая</option>
+                  <option value={1}>1 - {language === 'en' ? 'Minor' : 'Низкая'}</option>
+                  <option value={2}>2 - {language === 'en' ? 'Moderate' : 'Умеренная'}</option>
+                  <option value={3}>3 - {language === 'en' ? 'Standard' : 'Средняя'}</option>
+                  <option value={4}>4 - {language === 'en' ? 'High' : 'Высокая'}</option>
+                  <option value={5}>5 - {language === 'en' ? 'Critical' : 'Критическая'}</option>
                 </select>
               </div>
               <div className="flex items-center space-x-1.5">
                 <button
                   type="button"
                   onClick={() => setActiveForm(null)}
-                  className="text-xs text-slate-500 hover:text-slate-700 px-2 py-1"
+                  className="text-xs text-slate-500 hover:text-slate-700 px-2 py-1 cursor-pointer"
                 >
-                  Отмена
+                  {language === 'en' ? 'Cancel' : 'Отмена'}
                 </button>
                 <button
                   type="button"
                   onClick={() => handleAddItem(target, type)}
-                  className="text-xs bg-slate-900 text-white font-medium px-2.5 py-1 rounded-md hover:bg-slate-800 transition-colors"
+                  className="text-xs bg-slate-900 text-white font-medium px-2.5 py-1 rounded-md hover:bg-slate-800 transition-colors cursor-pointer"
                 >
-                  Добавить
+                  {language === 'en' ? 'Add' : 'Добавить'}
                 </button>
               </div>
             </div>
@@ -196,10 +197,10 @@ export const ProsConsView: React.FC<ProsConsViewProps> = ({
           <button
             type="button"
             onClick={() => setActiveForm(formKey)}
-            className="w-full py-1.5 px-3 border border-dashed border-slate-200 hover:border-slate-300 text-slate-500 hover:text-slate-800 text-xs font-semibold rounded-lg flex items-center justify-center space-x-1.5 transition-colors bg-white hover:bg-slate-50"
+            className="w-full py-1.5 px-3 border border-dashed border-slate-200 hover:border-slate-300 text-slate-500 hover:text-slate-800 text-xs font-semibold rounded-lg flex items-center justify-center space-x-1.5 transition-colors bg-white hover:bg-slate-50 cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Добавить аргумент</span>
+            <span>{language === 'en' ? 'Add Argument' : 'Добавить аргумент'}</span>
           </button>
         )}
       </div>
@@ -220,7 +221,7 @@ export const ProsConsView: React.FC<ProsConsViewProps> = ({
             </h3>
           </div>
           <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${opt1Scores.net >= 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
-            Баланс: {opt1Scores.net > 0 ? `+${opt1Scores.net}` : opt1Scores.net}
+            {t.prosCons.balance}: {opt1Scores.net > 0 ? `+${opt1Scores.net}` : opt1Scores.net}
           </span>
         </div>
 
@@ -228,26 +229,24 @@ export const ProsConsView: React.FC<ProsConsViewProps> = ({
           {/* Ratio visual bar */}
           <div>
             <div className="flex justify-between text-[11px] font-bold uppercase text-slate-400 mb-1.5">
-              <span className="text-emerald-700">За: {opt1Scores.prosTotal} б.</span>
-              <span className="text-rose-700">Против: {opt1Scores.consTotal} б.</span>
+              <span className="text-emerald-700">{t.prosCons.totalPros}: {opt1Scores.prosTotal}</span>
+              <span className="text-rose-700">{t.prosCons.totalCons}: {opt1Scores.consTotal}</span>
             </div>
             <div className="bg-slate-100 h-2 rounded-full overflow-hidden flex">
               <div
                 className="bg-emerald-500 h-full transition-all duration-300"
                 style={{ width: `${(opt1Scores.prosTotal / (opt1Scores.prosTotal + opt1Scores.consTotal || 1)) * 100}%` }}
-                title={`За: ${opt1Scores.prosTotal}`}
               />
               <div
                 className="bg-rose-500 h-full transition-all duration-300"
                 style={{ width: `${(opt1Scores.consTotal / (opt1Scores.prosTotal + opt1Scores.consTotal || 1)) * 100}%` }}
-                title={`Против: ${opt1Scores.consTotal}`}
               />
             </div>
           </div>
 
           <div className="space-y-5">
-            {renderList("Преимущества (Advantages)", 'option1', 'pros', prosCons.option1.pros, 'emerald')}
-            {renderList("Недостатки и риски (Drawbacks)", 'option1', 'cons', prosCons.option1.cons, 'rose')}
+            {renderList(t.prosCons.pros, 'option1', 'pros', prosCons.option1.pros)}
+            {renderList(t.prosCons.cons, 'option1', 'cons', prosCons.option1.cons)}
           </div>
         </div>
       </div>
@@ -264,7 +263,7 @@ export const ProsConsView: React.FC<ProsConsViewProps> = ({
             </h3>
           </div>
           <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${opt2Scores.net >= 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
-            Баланс: {opt2Scores.net > 0 ? `+${opt2Scores.net}` : opt2Scores.net}
+            {t.prosCons.balance}: {opt2Scores.net > 0 ? `+${opt2Scores.net}` : opt2Scores.net}
           </span>
         </div>
 
@@ -272,26 +271,24 @@ export const ProsConsView: React.FC<ProsConsViewProps> = ({
           {/* Ratio visual bar */}
           <div>
             <div className="flex justify-between text-[11px] font-bold uppercase text-slate-400 mb-1.5">
-              <span className="text-emerald-700">За: {opt2Scores.prosTotal} б.</span>
-              <span className="text-rose-700">Против: {opt2Scores.consTotal} б.</span>
+              <span className="text-emerald-700">{t.prosCons.totalPros}: {opt2Scores.prosTotal}</span>
+              <span className="text-rose-700">{t.prosCons.totalCons}: {opt2Scores.consTotal}</span>
             </div>
             <div className="bg-slate-100 h-2 rounded-full overflow-hidden flex">
               <div
                 className="bg-emerald-500 h-full transition-all duration-300"
                 style={{ width: `${(opt2Scores.prosTotal / (opt2Scores.prosTotal + opt2Scores.consTotal || 1)) * 100}%` }}
-                title={`За: ${opt2Scores.prosTotal}`}
               />
               <div
                 className="bg-rose-500 h-full transition-all duration-300"
                 style={{ width: `${(opt2Scores.consTotal / (opt2Scores.prosTotal + opt2Scores.consTotal || 1)) * 100}%` }}
-                title={`Против: ${opt2Scores.consTotal}`}
               />
             </div>
           </div>
 
           <div className="space-y-5">
-            {renderList("Преимущества (Advantages)", 'option2', 'pros', prosCons.option2.pros, 'emerald')}
-            {renderList("Недостатки и риски (Drawbacks)", 'option2', 'cons', prosCons.option2.cons, 'rose')}
+            {renderList(t.prosCons.pros, 'option2', 'pros', prosCons.option2.pros)}
+            {renderList(t.prosCons.cons, 'option2', 'cons', prosCons.option2.cons)}
           </div>
         </div>
       </div>

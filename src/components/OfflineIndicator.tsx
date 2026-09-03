@@ -1,9 +1,11 @@
 import React from 'react';
 import { WifiOff } from 'lucide-react';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export const OfflineIndicator: React.FC = () => {
   const isOnline = useOnlineStatus();
+  const { t } = useLanguage();
 
   if (isOnline) return null;
 
@@ -16,7 +18,7 @@ export const OfflineIndicator: React.FC = () => {
       <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
       <WifiOff className="w-4 h-4 text-amber-400 shrink-0" />
       <p className="leading-tight text-slate-200">
-        <strong className="text-white font-semibold">Офлайн-режим:</strong> Доступен локальный экспертный анализ и кэшированные данные.
+        <strong className="text-white font-semibold">{t.offline.title}:</strong> {t.offline.description}
       </p>
     </div>
   );

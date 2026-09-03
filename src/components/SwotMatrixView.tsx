@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Zap, AlertTriangle, TrendingUp, ShieldAlert, Layers } from 'lucide-react';
+import { Plus, Trash2, Zap, AlertTriangle, TrendingUp, ShieldAlert } from 'lucide-react';
 import { SWOTResult, SWOTQuadrant } from '../types';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface SwotMatrixViewProps {
   swot: SWOTResult;
@@ -15,6 +16,7 @@ export const SwotMatrixView: React.FC<SwotMatrixViewProps> = ({
   option2Title,
   onChange,
 }) => {
+  const { language, t } = useLanguage();
   const [selectedOption, setSelectedOption] = useState<'both' | 'option1' | 'option2'>('both');
   const [activeInput, setActiveInput] = useState<{ target: 'option1' | 'option2'; section: keyof SWOTQuadrant } | null>(null);
   const [inputText, setInputText] = useState('');
@@ -62,8 +64,9 @@ export const SwotMatrixView: React.FC<SwotMatrixViewProps> = ({
       <div className={`p-4 rounded-xl border ${bgClass} ${borderClass} flex flex-col justify-between shadow-2xs`}>
         <div>
           <div className="flex items-center justify-between mb-2">
-            <h4 className={`text-[10px] font-bold uppercase tracking-widest ${badgeClass}`}>
-              {title}
+            <h4 className={`text-[10px] font-bold uppercase tracking-widest ${badgeClass} flex items-center gap-1.5`}>
+              {icon}
+              <span>{title}</span>
             </h4>
             <span className="text-[10px] font-bold text-slate-400 bg-white/70 px-1.5 py-0.5 rounded border border-slate-200/50">
               {items.length}
@@ -86,8 +89,8 @@ export const SwotMatrixView: React.FC<SwotMatrixViewProps> = ({
                 <button
                   type="button"
                   onClick={() => handleDeleteItem(target, section, idx)}
-                  className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-600 transition-opacity p-0.5 shrink-0"
-                  title="Удалить"
+                  className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-600 transition-opacity p-0.5 shrink-0 cursor-pointer"
+                  title={language === 'en' ? 'Delete' : 'Удалить'}
                 >
                   <Trash2 className="w-3 h-3" />
                 </button>
@@ -104,7 +107,7 @@ export const SwotMatrixView: React.FC<SwotMatrixViewProps> = ({
                 type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder="Введите пункт SWOT..."
+                placeholder={language === 'en' ? 'Enter SWOT point...' : 'Введите пункт SWOT...'}
                 className="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-indigo-500"
                 autoFocus
                 onKeyDown={(e) => {
@@ -118,16 +121,16 @@ export const SwotMatrixView: React.FC<SwotMatrixViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveInput(null)}
-                  className="text-xs text-slate-500 hover:text-slate-700 px-2 py-1"
+                  className="text-xs text-slate-500 hover:text-slate-700 px-2 py-1 cursor-pointer"
                 >
-                  Отмена
+                  {language === 'en' ? 'Cancel' : 'Отмена'}
                 </button>
                 <button
                   type="button"
                   onClick={() => handleAddItem(target, section)}
-                  className="text-xs bg-slate-900 text-white px-2.5 py-1 rounded-md hover:bg-slate-800 font-medium"
+                  className="text-xs bg-slate-900 text-white px-2.5 py-1 rounded-md hover:bg-slate-800 font-medium cursor-pointer"
                 >
-                  Добавить
+                  {language === 'en' ? 'Add' : 'Добавить'}
                 </button>
               </div>
             </div>
@@ -138,10 +141,10 @@ export const SwotMatrixView: React.FC<SwotMatrixViewProps> = ({
                 setActiveInput({ target, section });
                 setInputText('');
               }}
-              className="w-full py-1.5 text-slate-500 hover:text-slate-800 text-[11px] font-semibold border border-dashed border-slate-300 hover:border-slate-400 rounded-lg flex items-center justify-center space-x-1 bg-white/70 transition-colors"
+              className="w-full py-1.5 text-slate-500 hover:text-slate-800 text-[11px] font-semibold border border-dashed border-slate-300 hover:border-slate-400 rounded-lg flex items-center justify-center space-x-1 bg-white/70 transition-colors cursor-pointer"
             >
               <Plus className="w-3 h-3" />
-              <span>Добавить пункт</span>
+              <span>{language === 'en' ? 'Add Item' : 'Добавить пункт'}</span>
             </button>
           )}
         </div>
@@ -164,7 +167,7 @@ export const SwotMatrixView: React.FC<SwotMatrixViewProps> = ({
             </h4>
           </div>
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-white px-2.5 py-1 rounded-md border border-slate-200">
-            SWOT Matrix
+            SWOT
           </span>
         </div>
 
@@ -173,10 +176,10 @@ export const SwotMatrixView: React.FC<SwotMatrixViewProps> = ({
           {renderQuadrantCard(
             target,
             'strengths',
-            'Strengths (Сильные стороны)',
-            'Внутренние конкурентные преимущества',
+            t.swot.strengths,
+            t.swot.strengthsDesc,
             data.strengths,
-            <Zap className="w-4 h-4 text-indigo-600" />,
+            <Zap className="w-3.5 h-3.5 text-indigo-600" />,
             'bg-indigo-50/50',
             'border-indigo-100',
             'text-indigo-700'
@@ -184,10 +187,10 @@ export const SwotMatrixView: React.FC<SwotMatrixViewProps> = ({
           {renderQuadrantCard(
             target,
             'weaknesses',
-            'Weaknesses (Слабые стороны)',
-            'Внутренние ограничения и уязвимости',
+            t.swot.weaknesses,
+            t.swot.weaknessesDesc,
             data.weaknesses,
-            <AlertTriangle className="w-4 h-4 text-slate-600" />,
+            <AlertTriangle className="w-3.5 h-3.5 text-slate-600" />,
             'bg-slate-50',
             'border-slate-200',
             'text-slate-600'
@@ -195,10 +198,10 @@ export const SwotMatrixView: React.FC<SwotMatrixViewProps> = ({
           {renderQuadrantCard(
             target,
             'opportunities',
-            'Opportunities (Возможности)',
-            'Внешний потенциал и перспективы роста',
+            t.swot.opportunities,
+            t.swot.opportunitiesDesc,
             data.opportunities,
-            <TrendingUp className="w-4 h-4 text-emerald-600" />,
+            <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />,
             'bg-emerald-50/50',
             'border-emerald-100',
             'text-emerald-700'
@@ -206,10 +209,10 @@ export const SwotMatrixView: React.FC<SwotMatrixViewProps> = ({
           {renderQuadrantCard(
             target,
             'threats',
-            'Threats (Угрозы и риски)',
-            'Внешние факторы риска и нестабильности',
+            t.swot.threats,
+            t.swot.threatsDesc,
             data.threats,
-            <ShieldAlert className="w-4 h-4 text-rose-600" />,
+            <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />,
             'bg-rose-50/50',
             'border-rose-100',
             'text-rose-700'
@@ -224,29 +227,29 @@ export const SwotMatrixView: React.FC<SwotMatrixViewProps> = ({
       {/* Selector pills */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <p className="text-xs text-slate-500">
-          SWOT позволяет оценить внутренний потенциал и внешние вызовы для обоих путей.
+          {t.swot.subtitle}
         </p>
         <div className="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-200/80">
           <button
             type="button"
             onClick={() => setSelectedOption('both')}
-            className={`px-3 py-1 text-xs font-medium rounded-lg transition-all ${selectedOption === 'both' ? 'bg-white text-slate-900 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'}`}
+            className={`px-3 py-1 text-xs font-medium rounded-lg transition-all cursor-pointer ${selectedOption === 'both' ? 'bg-white text-slate-900 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'}`}
           >
-            Оба варианта рядом
+            {t.swot.both}
           </button>
           <button
             type="button"
             onClick={() => setSelectedOption('option1')}
-            className={`px-3 py-1 text-xs font-medium rounded-lg transition-all ${selectedOption === 'option1' ? 'bg-white text-indigo-700 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'}`}
+            className={`px-3 py-1 text-xs font-medium rounded-lg transition-all cursor-pointer ${selectedOption === 'option1' ? 'bg-white text-indigo-700 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'}`}
           >
-            Только Вариант 1
+            {t.swot.only1}
           </button>
           <button
             type="button"
             onClick={() => setSelectedOption('option2')}
-            className={`px-3 py-1 text-xs font-medium rounded-lg transition-all ${selectedOption === 'option2' ? 'bg-white text-emerald-700 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'}`}
+            className={`px-3 py-1 text-xs font-medium rounded-lg transition-all cursor-pointer ${selectedOption === 'option2' ? 'bg-white text-emerald-700 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'}`}
           >
-            Только Вариант 2
+            {t.swot.only2}
           </button>
         </div>
       </div>
@@ -254,13 +257,13 @@ export const SwotMatrixView: React.FC<SwotMatrixViewProps> = ({
       {/* Grid or Single Render */}
       {selectedOption === 'both' ? (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          {renderSingleOptionMatrix('option1', option1Title, '1', 'bg-indigo-600')}
-          {renderSingleOptionMatrix('option2', option2Title, '2', 'bg-emerald-600')}
+          {renderSingleOptionMatrix('option1', option1Title, 'A', 'bg-indigo-600')}
+          {renderSingleOptionMatrix('option2', option2Title, 'B', 'bg-emerald-600')}
         </div>
       ) : selectedOption === 'option1' ? (
-        renderSingleOptionMatrix('option1', option1Title, '1', 'bg-indigo-600')
+        renderSingleOptionMatrix('option1', option1Title, 'A', 'bg-indigo-600')
       ) : (
-        renderSingleOptionMatrix('option2', option2Title, '2', 'bg-emerald-600')
+        renderSingleOptionMatrix('option2', option2Title, 'B', 'bg-emerald-600')
       )}
     </div>
   );

@@ -6,9 +6,11 @@ import { ComparisonTableView } from './components/ComparisonTableView';
 import { SwotMatrixView } from './components/SwotMatrixView';
 import { VerdictCard } from './components/VerdictCard';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { AndroidVirtualDevice } from './components/AndroidVirtualDevice';
 import { generateLocalAnalysis } from './data/fallbackGenerator';
-import { PRESET_EXAMPLES } from './data/presets';
+import { getPresets } from './data/presets';
 import { AnalysisResult, ActiveTab } from './types';
+import { useLanguage } from './i18n/LanguageContext';
 import {
   ListChecks,
   Table,
@@ -16,29 +18,30 @@ import {
   Trophy,
   Layers,
   ArrowLeftRight,
-  Info,
-  CheckCircle2,
-  Sparkles,
-  RefreshCw
+  Info
 } from 'lucide-react';
 
 export default function App() {
+  const { language, t } = useLanguage();
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ActiveTab>('all');
   const [isUsingAi, setIsUsingAi] = useState<boolean | null>(null);
+  const [isAndroidView, setIsAndroidView] = useState(false);
 
-  // Initialize with the first realistic preset so the user sees a complete, rich interface right away!
+  // Initialize with the localized preset on mount and when language changes (if on default)
   useEffect(() => {
-    const defaultPreset = PRESET_EXAMPLES[0];
+    const presets = getPresets(language);
+    const defaultPreset = presets[0];
     const initialData = generateLocalAnalysis(
       defaultPreset.option1,
       defaultPreset.option2,
-      defaultPreset.context
+      defaultPreset.context,
+      language
     );
     setAnalysis(initialData);
-  }, []);
+  }, [language]);
 
   const handleStartAnalysis = async (option1: string, option2: string, context?: string) => {
     setIsLoading(true);
@@ -48,7 +51,7 @@ export default function App() {
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ option1, option2, context }),
+        body: JSON.stringify({ option1, option2, context, language }),
       });
 
       if (!response.ok) {
@@ -61,15 +64,15 @@ export default function App() {
         setAnalysis(resData.data);
         setIsUsingAi(Boolean(resData.usingAI));
       } else {
-        // Use intelligent local generator
-        const local = generateLocalAnalysis(option1, option2, context);
+        // Use intelligent local generator with current language
+        const local = generateLocalAnalysis(option1, option2, context, language);
         setAnalysis(local);
         setIsUsingAi(false);
       }
     } catch {
       // Resilient fallback so app never hangs
       console.log('Notice: Fallback engine activated on client.');
-      const local = generateLocalAnalysis(option1, option2, context);
+      const local = generateLocalAnalysis(option1, option2, context, language);
       setAnalysis(local);
       setIsUsingAi(false);
     } finally {
@@ -78,7 +81,15 @@ export default function App() {
   };
 
   const handleReset = () => {
-    setAnalysis(null);
+    const presets = getPresets(language);
+    const defaultPreset = presets[0];
+    const initialData = generateLocalAnalysis(
+      defaultPreset.option1,
+      defaultPreset.option2,
+      defaultPreset.context,
+      language
+    );
+    setAnalysis(initialData);
     setError(null);
   };
 
@@ -99,17 +110,24 @@ export default function App() {
 
     return {
       winner,
-      winnerTitle: winner === 'option1' ? analysis.option1Title : winner === 'option2' ? analysis.option2Title : 'Паритет',
+      winnerTitle: winner === 'option1' ? analysis.option1Title : winner === 'option2' ? analysis.option2Title : t.verdict.tie,
       score1,
       score2
     };
-  }, [analysis]);
+  }, [analysis, t.verdict.tie]);
 
-  return (
+  // Main application content
+  const appContent = (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans antialiased flex flex-col">
-      <Header hasResult={Boolean(analysis)} onReset={handleReset} />
+      <Header
+        hasResult={Boolean(analysis)}
+        onReset={handleReset}
+        onPrint={() => window.print()}
+        isAndroidView={isAndroidView}
+        onToggleAndroidView={() => setIsAndroidView(!isAndroidView)}
+      />
 
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+      <main className="flex-1 max-w-6xl w-full mx-auto px-3 sm:px-6 py-5 sm:py-8 space-y-6">
         {/* Input Form */}
         <DecisionForm
           onSubmit={handleStartAnalysis}
@@ -121,9 +139,9 @@ export default function App() {
             <span>{error}</span>
             <button
               onClick={() => setError(null)}
-              className="text-xs font-bold uppercase tracking-wider text-rose-700 hover:text-rose-900"
+              className="text-xs font-bold uppercase tracking-wider text-rose-700 hover:text-rose-900 cursor-pointer"
             >
-              Закрыть
+              {language === 'en' ? 'Dismiss' : 'Закрыть'}
             </button>
           </div>
         )}
@@ -132,7 +150,7 @@ export default function App() {
         {analysis && (
           <div className="space-y-6">
             {/* Options Header Bar */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex items-center space-x-3.5">
                 <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0 shadow-2xs">
                   <ArrowLeftRight className="w-5 h-5 text-indigo-400" />
@@ -140,11 +158,11 @@ export default function App() {
                 <div>
                   <div className="flex items-center space-x-2">
                     <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-700">
-                      Сравниваемые альтернативы
+                      {language === 'en' ? 'Compared Alternatives' : 'Сравниваемые альтернативы'}
                     </span>
                     {isUsingAi !== null && (
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${isUsingAi ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
-                        {isUsingAi ? 'Gemini 3.8 Flash' : 'Экспертный скоринг'}
+                        {isUsingAi ? 'Gemini 3.8 Flash' : (language === 'en' ? 'Local Scoring' : 'Экспертный скоринг')}
                       </span>
                     )}
                   </div>
@@ -160,7 +178,7 @@ export default function App() {
                   {analysis.context && (
                     <p className="text-xs text-slate-500 mt-1.5 flex items-center space-x-1">
                       <Info className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span>Контекст: {analysis.context}</span>
+                      <span>{language === 'en' ? 'Context' : 'Контекст'}: {analysis.context}</span>
                     </p>
                   )}
                 </div>
@@ -170,7 +188,7 @@ export default function App() {
               <div className="flex items-center space-x-3 shrink-0 bg-slate-50 p-3 rounded-xl border border-slate-200 self-start md:self-auto shadow-2xs">
                 <div className="text-right">
                   <span className="text-[10px] uppercase font-bold text-slate-400 block leading-none">
-                    Счет моделей
+                    {language === 'en' ? 'Engine Score' : 'Счет моделей'}
                   </span>
                   <span className="text-xs font-extrabold text-slate-800">
                     {calculatedWinner.score1.toFixed(0)}% vs {calculatedWinner.score2.toFixed(0)}%
@@ -178,7 +196,11 @@ export default function App() {
                 </div>
                 <div className="h-7 w-[1px] bg-slate-200" />
                 <div className="text-xs font-bold text-indigo-700">
-                  {calculatedWinner.winner === 'option1' ? 'Перевес Варианта A' : calculatedWinner.winner === 'option2' ? 'Перевес Варианта B' : 'Равный паритет'}
+                  {calculatedWinner.winner === 'option1'
+                    ? (language === 'en' ? 'Option A Leads' : 'Перевес Варианта A')
+                    : calculatedWinner.winner === 'option2'
+                    ? (language === 'en' ? 'Option B Leads' : 'Перевес Варианта B')
+                    : (language === 'en' ? 'Even Match' : 'Равный паритет')}
                 </div>
               </div>
             </div>
@@ -189,70 +211,70 @@ export default function App() {
                 type="button"
                 id="tab-all"
                 onClick={() => setActiveTab('all')}
-                className={`inline-flex items-center space-x-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${
+                className={`inline-flex items-center space-x-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                   activeTab === 'all'
                     ? 'bg-white text-indigo-700 shadow-2xs border border-slate-200/60'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
                 }`}
               >
                 <Layers className="w-3.5 h-3.5" />
-                <span>Полный обзор</span>
+                <span>{t.tabs.all}</span>
               </button>
 
               <button
                 type="button"
                 id="tab-pros-cons"
                 onClick={() => setActiveTab('pros-cons')}
-                className={`inline-flex items-center space-x-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${
+                className={`inline-flex items-center space-x-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                   activeTab === 'pros-cons'
                     ? 'bg-white text-indigo-700 shadow-2xs border border-slate-200/60'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
                 }`}
               >
                 <ListChecks className="w-3.5 h-3.5 text-emerald-600" />
-                <span>«За» и «Против»</span>
+                <span>{t.tabs.prosCons}</span>
               </button>
 
               <button
                 type="button"
                 id="tab-comparison"
                 onClick={() => setActiveTab('comparison')}
-                className={`inline-flex items-center space-x-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${
+                className={`inline-flex items-center space-x-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                   activeTab === 'comparison'
                     ? 'bg-white text-indigo-700 shadow-2xs border border-slate-200/60'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
                 }`}
               >
                 <Table className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Таблица сравнения</span>
+                <span>{t.tabs.comparison}</span>
               </button>
 
               <button
                 type="button"
                 id="tab-swot"
                 onClick={() => setActiveTab('swot')}
-                className={`inline-flex items-center space-x-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${
+                className={`inline-flex items-center space-x-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                   activeTab === 'swot'
                     ? 'bg-white text-indigo-700 shadow-2xs border border-slate-200/60'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
                 }`}
               >
                 <Grid2X2 className="w-3.5 h-3.5 text-sky-600" />
-                <span>SWOT-анализ</span>
+                <span>{t.tabs.swot}</span>
               </button>
 
               <button
                 type="button"
                 id="tab-verdict"
                 onClick={() => setActiveTab('verdict')}
-                className={`inline-flex items-center space-x-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${
+                className={`inline-flex items-center space-x-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                   activeTab === 'verdict'
                     ? 'bg-white text-indigo-700 shadow-2xs border border-slate-200/60'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
                 }`}
               >
                 <Trophy className="w-3.5 h-3.5 text-amber-500" />
-                <span>Вердикт и рекомендации</span>
+                <span>{t.tabs.verdict}</span>
               </button>
             </div>
 
@@ -273,11 +295,11 @@ export default function App() {
                       <div className="flex items-center space-x-2">
                         <span className="w-6 h-6 rounded-lg bg-emerald-600 text-white text-xs font-bold flex items-center justify-center shadow-2xs">1</span>
                         <h3 className="font-bold text-slate-800 text-base sm:text-lg">
-                          Перечень «За» и «Против» (Pros & Cons)
+                          {t.prosCons.title}
                         </h3>
                       </div>
                       <span className="text-xs text-slate-500 hidden sm:inline">
-                        Взвешенные аргументы с оценкой силы влияния
+                        {t.prosCons.subtitle}
                       </span>
                     </div>
                     <ProsConsView
@@ -294,11 +316,11 @@ export default function App() {
                       <div className="flex items-center space-x-2">
                         <span className="w-6 h-6 rounded-lg bg-indigo-600 text-white text-xs font-bold flex items-center justify-center shadow-2xs">2</span>
                         <h3 className="font-bold text-slate-800 text-base sm:text-lg">
-                          Таблица многокритериального сравнения (Direct Comparison)
+                          {t.comparison.title}
                         </h3>
                       </div>
                       <span className="text-xs text-slate-500 hidden sm:inline">
-                        Оценка параметров от 1 до 10 с весовыми коэффициентами
+                        {t.comparison.subtitle}
                       </span>
                     </div>
                     <ComparisonTableView
@@ -315,11 +337,11 @@ export default function App() {
                       <div className="flex items-center space-x-2">
                         <span className="w-6 h-6 rounded-lg bg-slate-800 text-white text-xs font-bold flex items-center justify-center shadow-2xs">3</span>
                         <h3 className="font-bold text-slate-800 text-base sm:text-lg">
-                          SWOT-анализ вариантов
+                          {t.swot.title}
                         </h3>
                       </div>
                       <span className="text-xs text-slate-500 hidden sm:inline">
-                        Силы, слабости, возможности и угрозы каждого пути
+                        {t.swot.subtitle}
                       </span>
                     </div>
                     <SwotMatrixView
@@ -337,10 +359,10 @@ export default function App() {
                 <div className="space-y-4">
                   <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
                     <h3 className="font-bold text-slate-800 text-base mb-1">
-                      Перечень аргументов «За» и «Против»
+                      {t.prosCons.title}
                     </h3>
                     <p className="text-xs text-slate-500">
-                      Сравните баланс плюсов и минусов для каждого пути. Вы можете добавлять собственные аргументы или удалять существующие.
+                      {t.prosCons.subtitle}
                     </p>
                   </div>
                   <ProsConsView
@@ -357,10 +379,10 @@ export default function App() {
                 <div className="space-y-4">
                   <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
                     <h3 className="font-bold text-slate-800 text-base mb-1">
-                      Матричная таблица сравнения по ключевым факторам
+                      {t.comparison.title}
                     </h3>
                     <p className="text-xs text-slate-500">
-                      Настраивайте оценки и веса критериев, чтобы увидеть математический перевес одного варианта над другим.
+                      {t.comparison.subtitle}
                     </p>
                   </div>
                   <ComparisonTableView
@@ -377,10 +399,10 @@ export default function App() {
                 <div className="space-y-4">
                   <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
                     <h3 className="font-bold text-slate-800 text-base mb-1">
-                      SWOT-анализ альтернатив
+                      {t.swot.title}
                     </h3>
                     <p className="text-xs text-slate-500">
-                      Классический стратегический инструмент: выявление внутренних сильных/слабых сторон и внешних возможностей/угроз.
+                      {t.swot.subtitle}
                     </p>
                   </div>
                   <SwotMatrixView
@@ -408,12 +430,23 @@ export default function App() {
 
       <footer className="border-t border-slate-200 bg-white py-4 mt-auto">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
-          <span>DecisionCanvas • Выбор решения из 2-х вариантов</span>
-          <span className="text-slate-400">Форматы: «За» и «Против» • Сравнительная таблица • SWOT-матрица</span>
+          <span>{t.footer.rights}</span>
+          <span className="text-slate-400">{t.footer.tagline}</span>
         </div>
       </footer>
 
       <OfflineIndicator />
     </div>
   );
+
+  // If Virtual Android Device is enabled, render the app inside the Android frame
+  if (isAndroidView) {
+    return (
+      <AndroidVirtualDevice onExit={() => setIsAndroidView(false)}>
+        {appContent}
+      </AndroidVirtualDevice>
+    );
+  }
+
+  return appContent;
 }
