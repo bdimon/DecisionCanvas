@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGradMaskable" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e1b4b" />
+      <stop offset="100%" stop-color="#3730a3" />
+    </linearGradient>
+    <linearGradient id="beamGradM" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#818cf8" />
+      <stop offset="50%" stop-color="#c7d2fe" />
+      <stop offset="100%" stop-color="#34d399" />
+    </linearGradient>
+    <linearGradient id="plateAGradM" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1" />
+      <stop offset="100%" stop-color="#4338ca" />
+    </linearGradient>
+    <linearGradient id="plateBGradM" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#047857" />
+    </linearGradient>
+  </defs>
+
+  <!-- Full bleed solid gradient for maskable cropping -->
+  <rect width="512" height="512" fill="url(#bgGradMaskable)" />
+
+  <!-- Scaled content within 75% safe area (centered) -->
+  <g transform="translate(64, 64) scale(0.75)">
+    <!-- Base stand -->
+    <path d="M 176 410 L 336 410 C 342 410 348 416 348 422 L 348 430 C 348 436 342 442 336 442 L 176 442 C 170 442 164 436 164 430 L 164 422 C 164 416 170 410 176 410 Z" fill="#e0e7ff" />
+    <path d="M 244 140 L 268 140 L 268 414 L 244 414 Z" fill="#c7d2fe" />
+
+    <!-- Central fulcrum pivot circle -->
+    <circle cx="256" cy="148" r="22" fill="#e0e7ff" />
+    <circle cx="256" cy="148" r="10" fill="#4338ca" />
+
+    <!-- Balance beam -->
+    <path d="M 96 178 L 416 138 L 414 154 L 98 194 Z" fill="url(#beamGradM)" rx="6" />
+
+    <!-- Left Option (Plate A - Indigo) -->
+    <line x1="110" y1="188" x2="74" y2="280" stroke="#a5b4fc" stroke-width="4" stroke-linecap="round" />
+    <line x1="110" y1="188" x2="146" y2="280" stroke="#a5b4fc" stroke-width="4" stroke-linecap="round" />
+    <path d="M 64 280 Q 110 320 156 280 Z" fill="url(#plateAGradM)" />
+    <rect x="88" y="246" width="44" height="24" rx="12" fill="#ffffff" />
+    <text x="110" y="263" font-family="system-ui, -apple-system, sans-serif" font-size="15" font-weight="900" fill="#4338ca" text-anchor="middle">A</text>
+
+    <!-- Right Option (Plate B - Emerald) -->
+    <line x1="402" y1="148" x2="366" y2="240" stroke="#6ee7b7" stroke-width="4" stroke-linecap="round" />
+    <line x1="402" y1="148" x2="438" y2="240" stroke="#6ee7b7" stroke-width="4" stroke-linecap="round" />
+    <path d="M 356 240 Q 402 280 448 240 Z" fill="url(#plateBGradM)" />
+    <rect x="380" y="206" width="44" height="24" rx="12" fill="#ffffff" />
+    <text x="402" y="223" font-family="system-ui, -apple-system, sans-serif" font-size="15" font-weight="900" fill="#047857" text-anchor="middle">B</text>
+
+    <!-- Golden Decision Sparkle -->
+    <path d="M 402 96 L 407 114 L 425 119 L 407 124 L 402 142 L 397 124 L 379 119 L 397 114 Z" fill="#fbbf24" />
+  </g>
+</svg>

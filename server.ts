@@ -79,168 +79,206 @@ ${context ? `ДОПОЛНИТЕЛЬНЫЙ КОНТЕКСТ И ОГРАНИЧЕН
 
 Сформируй анализ строго в соответствии со схемой JSON.`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: prompt,
-      config: {
-        systemInstruction,
-        temperature: 0.3,
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            option1Title: { type: Type.STRING },
-            option2Title: { type: Type.STRING },
-            prosCons: {
-              type: Type.OBJECT,
-              properties: {
-                option1: {
-                  type: Type.OBJECT,
-                  properties: {
-                    pros: {
-                      type: Type.ARRAY,
-                      items: {
-                        type: Type.OBJECT,
-                        properties: {
-                          id: { type: Type.STRING },
-                          text: { type: Type.STRING },
-                          weight: { type: Type.INTEGER, description: '1 to 5' },
-                          category: { type: Type.STRING }
-                        },
-                        required: ['id', 'text', 'weight', 'category']
-                      }
-                    },
-                    cons: {
-                      type: Type.ARRAY,
-                      items: {
-                        type: Type.OBJECT,
-                        properties: {
-                          id: { type: Type.STRING },
-                          text: { type: Type.STRING },
-                          weight: { type: Type.INTEGER, description: '1 to 5' },
-                          category: { type: Type.STRING }
-                        },
-                        required: ['id', 'text', 'weight', 'category']
-                      }
-                    }
-                  },
-                  required: ['pros', 'cons']
-                },
-                option2: {
-                  type: Type.OBJECT,
-                  properties: {
-                    pros: {
-                      type: Type.ARRAY,
-                      items: {
-                        type: Type.OBJECT,
-                        properties: {
-                          id: { type: Type.STRING },
-                          text: { type: Type.STRING },
-                          weight: { type: Type.INTEGER, description: '1 to 5' },
-                          category: { type: Type.STRING }
-                        },
-                        required: ['id', 'text', 'weight', 'category']
-                      }
-                    },
-                    cons: {
-                      type: Type.ARRAY,
-                      items: {
-                        type: Type.OBJECT,
-                        properties: {
-                          id: { type: Type.STRING },
-                          text: { type: Type.STRING },
-                          weight: { type: Type.INTEGER, description: '1 to 5' },
-                          category: { type: Type.STRING }
-                        },
-                        required: ['id', 'text', 'weight', 'category']
-                      }
-                    }
-                  },
-                  required: ['pros', 'cons']
-                }
-              },
-              required: ['option1', 'option2']
-            },
-            comparisonTable: {
-              type: Type.ARRAY,
-              items: {
+    const contentConfig = {
+      systemInstruction,
+      temperature: 0.3,
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          option1Title: { type: Type.STRING },
+          option2Title: { type: Type.STRING },
+          prosCons: {
+            type: Type.OBJECT,
+            properties: {
+              option1: {
                 type: Type.OBJECT,
                 properties: {
-                  id: { type: Type.STRING },
-                  category: { type: Type.STRING },
-                  title: { type: Type.STRING },
-                  description: { type: Type.STRING },
-                  weight: { type: Type.INTEGER, description: '1 to 5' },
-                  option1Score: { type: Type.INTEGER, description: '1 to 10' },
-                  option1Note: { type: Type.STRING },
-                  option2Score: { type: Type.INTEGER, description: '1 to 10' },
-                  option2Note: { type: Type.STRING }
+                  pros: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        id: { type: Type.STRING },
+                        text: { type: Type.STRING },
+                        weight: { type: Type.INTEGER, description: '1 to 5' },
+                        category: { type: Type.STRING }
+                      },
+                      required: ['id', 'text', 'weight', 'category']
+                    }
+                  },
+                  cons: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        id: { type: Type.STRING },
+                        text: { type: Type.STRING },
+                        weight: { type: Type.INTEGER, description: '1 to 5' },
+                        category: { type: Type.STRING }
+                      },
+                      required: ['id', 'text', 'weight', 'category']
+                    }
+                  }
                 },
-                required: [
-                  'id', 'category', 'title', 'description', 'weight',
-                  'option1Score', 'option1Note', 'option2Score', 'option2Note'
-                ]
+                required: ['pros', 'cons']
+              },
+              option2: {
+                type: Type.OBJECT,
+                properties: {
+                  pros: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        id: { type: Type.STRING },
+                        text: { type: Type.STRING },
+                        weight: { type: Type.INTEGER, description: '1 to 5' },
+                        category: { type: Type.STRING }
+                      },
+                      required: ['id', 'text', 'weight', 'category']
+                    }
+                  },
+                  cons: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        id: { type: Type.STRING },
+                        text: { type: Type.STRING },
+                        weight: { type: Type.INTEGER, description: '1 to 5' },
+                        category: { type: Type.STRING }
+                      },
+                      required: ['id', 'text', 'weight', 'category']
+                    }
+                  }
+                },
+                required: ['pros', 'cons']
               }
             },
-            swot: {
+            required: ['option1', 'option2']
+          },
+          comparisonTable: {
+            type: Type.ARRAY,
+            items: {
               type: Type.OBJECT,
               properties: {
-                option1: {
-                  type: Type.OBJECT,
-                  properties: {
-                    strengths: { type: Type.ARRAY, items: { type: Type.STRING } },
-                    weaknesses: { type: Type.ARRAY, items: { type: Type.STRING } },
-                    opportunities: { type: Type.ARRAY, items: { type: Type.STRING } },
-                    threats: { type: Type.ARRAY, items: { type: Type.STRING } }
-                  },
-                  required: ['strengths', 'weaknesses', 'opportunities', 'threats']
-                },
-                option2: {
-                  type: Type.OBJECT,
-                  properties: {
-                    strengths: { type: Type.ARRAY, items: { type: Type.STRING } },
-                    weaknesses: { type: Type.ARRAY, items: { type: Type.STRING } },
-                    opportunities: { type: Type.ARRAY, items: { type: Type.STRING } },
-                    threats: { type: Type.ARRAY, items: { type: Type.STRING } }
-                  },
-                  required: ['strengths', 'weaknesses', 'opportunities', 'threats']
-                }
+                id: { type: Type.STRING },
+                category: { type: Type.STRING },
+                title: { type: Type.STRING },
+                description: { type: Type.STRING },
+                weight: { type: Type.INTEGER, description: '1 to 5' },
+                option1Score: { type: Type.INTEGER, description: '1 to 10' },
+                option1Note: { type: Type.STRING },
+                option2Score: { type: Type.INTEGER, description: '1 to 10' },
+                option2Note: { type: Type.STRING }
               },
-              required: ['option1', 'option2']
-            },
-            verdict: {
-              type: Type.OBJECT,
-              properties: {
-                winner: { type: Type.STRING, description: 'option1, option2 or tie' },
-                winnerTitle: { type: Type.STRING },
-                confidenceScore: { type: Type.INTEGER, description: '0 to 100' },
-                summary: { type: Type.STRING },
-                keyDrivers: { type: Type.ARRAY, items: { type: Type.STRING } },
-                tradeOffSummary: { type: Type.STRING },
-                recommendedNextSteps: { type: Type.ARRAY, items: { type: Type.STRING } }
-              },
-              required: ['winner', 'winnerTitle', 'confidenceScore', 'summary', 'keyDrivers', 'tradeOffSummary', 'recommendedNextSteps']
+              required: [
+                'id', 'category', 'title', 'description', 'weight',
+                'option1Score', 'option1Note', 'option2Score', 'option2Note'
+              ]
             }
           },
-          required: ['option1Title', 'option2Title', 'prosCons', 'comparisonTable', 'swot', 'verdict']
+          swot: {
+            type: Type.OBJECT,
+            properties: {
+              option1: {
+                type: Type.OBJECT,
+                properties: {
+                  strengths: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  weaknesses: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  opportunities: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  threats: { type: Type.ARRAY, items: { type: Type.STRING } }
+                },
+                required: ['strengths', 'weaknesses', 'opportunities', 'threats']
+              },
+              option2: {
+                type: Type.OBJECT,
+                properties: {
+                  strengths: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  weaknesses: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  opportunities: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  threats: { type: Type.ARRAY, items: { type: Type.STRING } }
+                },
+                required: ['strengths', 'weaknesses', 'opportunities', 'threats']
+              }
+            },
+            required: ['option1', 'option2']
+          },
+          verdict: {
+            type: Type.OBJECT,
+            properties: {
+              winner: { type: Type.STRING, description: 'option1, option2 or tie' },
+              winnerTitle: { type: Type.STRING },
+              confidenceScore: { type: Type.INTEGER, description: '0 to 100' },
+              summary: { type: Type.STRING },
+              keyDrivers: { type: Type.ARRAY, items: { type: Type.STRING } },
+              tradeOffSummary: { type: Type.STRING },
+              recommendedNextSteps: { type: Type.ARRAY, items: { type: Type.STRING } }
+            },
+            required: ['winner', 'winnerTitle', 'confidenceScore', 'summary', 'keyDrivers', 'tradeOffSummary', 'recommendedNextSteps']
+          }
+        },
+        required: ['option1Title', 'option2Title', 'prosCons', 'comparisonTable', 'swot', 'verdict']
+      }
+    };
+
+    // Candidate models to handle spikes in demand (503 / 429) seamlessly
+    const candidateModels = ['gemini-3.8-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest'];
+    let parsedData: any = null;
+    let successfulModel = '';
+
+    for (const modelName of candidateModels) {
+      try {
+        const response = await ai.models.generateContent({
+          model: modelName,
+          contents: prompt,
+          config: contentConfig,
+        });
+
+        const rawText = response.text?.trim() || '{}';
+        parsedData = JSON.parse(rawText);
+        if (parsedData && parsedData.option1Title && parsedData.verdict) {
+          successfulModel = modelName;
+          break;
+        }
+      } catch (callErr: any) {
+        // If 503 (high demand) or 429 (rate limit), log info and try the next model candidate
+        const errMsg = String(callErr?.message || callErr);
+        const isTemporary = errMsg.includes('503') || errMsg.includes('demand') || errMsg.includes('429') || errMsg.includes('UNAVAILABLE');
+        if (isTemporary) {
+          console.log(`Model ${modelName} temporarily busy, attempting fallback model...`);
+          // Brief pause before trying alternative model
+          await new Promise((resolve) => setTimeout(resolve, 800));
+        } else {
+          console.log(`Notice: Model ${modelName} returned notice, trying next candidate.`);
         }
       }
-    });
+    }
 
-    const rawText = response.text?.trim() || '{}';
-    const parsedData = JSON.parse(rawText);
+    if (parsedData && parsedData.option1Title) {
+      return res.json({
+        usingAI: true,
+        model: successfulModel,
+        data: {
+          id: 'analysis-' + Date.now(),
+          createdAt: new Date().toISOString(),
+          context: context || undefined,
+          ...parsedData
+        }
+      });
+    }
 
+    // Fallback if all models are busy
+    console.log('AI models temporarily unavailable due to demand spikes; engaging expert local fallback.');
+    const fallbackData = generateLocalAnalysis(option1, option2, context);
     return res.json({
-      usingAI: true,
-      data: {
-        id: 'analysis-' + Date.now(),
-        createdAt: new Date().toISOString(),
-        context: context || undefined,
-        ...parsedData
-      }
+      usingAI: false,
+      data: fallbackData,
+      note: 'Сгенерировано встроенным модулем аналитического анализа'
     });
   } catch (error: any) {
-    console.warn('Gemini analysis error, utilizing fallback analytical generator:', error?.message || error);
+    console.log('Notice: Fallback engine activated for analysis.');
     const { option1, option2, context } = req.body || {};
     const fallbackData = generateLocalAnalysis(option1 || 'Вариант 1', option2 || 'Вариант 2', context);
     return res.json({

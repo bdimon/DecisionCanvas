@@ -5,6 +5,7 @@ import { ProsConsView } from './components/ProsConsView';
 import { ComparisonTableView } from './components/ComparisonTableView';
 import { SwotMatrixView } from './components/SwotMatrixView';
 import { VerdictCard } from './components/VerdictCard';
+import { OfflineIndicator } from './components/OfflineIndicator';
 import { generateLocalAnalysis } from './data/fallbackGenerator';
 import { PRESET_EXAMPLES } from './data/presets';
 import { AnalysisResult, ActiveTab } from './types';
@@ -56,18 +57,18 @@ export default function App() {
 
       const resData = await response.json();
 
-      if (resData.usingAI && resData.data) {
+      if (resData.data) {
         setAnalysis(resData.data);
-        setIsUsingAi(true);
+        setIsUsingAi(Boolean(resData.usingAI));
       } else {
         // Use intelligent local generator
         const local = generateLocalAnalysis(option1, option2, context);
         setAnalysis(local);
         setIsUsingAi(false);
       }
-    } catch (err: any) {
-      console.warn('API error, falling back to local analytical engine:', err);
+    } catch {
       // Resilient fallback so app never hangs
+      console.log('Notice: Fallback engine activated on client.');
       const local = generateLocalAnalysis(option1, option2, context);
       setAnalysis(local);
       setIsUsingAi(false);
@@ -411,6 +412,8 @@ export default function App() {
           <span className="text-slate-400">Форматы: «За» и «Против» • Сравнительная таблица • SWOT-матрица</span>
         </div>
       </footer>
+
+      <OfflineIndicator />
     </div>
   );
 }
