@@ -1,0 +1,6 @@
+{
+  "name": "Выбор решения из двух вариантов",
+  "description": "Интеллектуальное веб-приложение для выбора между двумя вариантами с анализом «За» и «Против», подробной таблицей сравнения и матрицей SWOT-анализа.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
