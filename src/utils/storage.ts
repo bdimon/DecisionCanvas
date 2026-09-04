@@ -1,4 +1,14 @@
 import { AnalysisResult } from '../types';
+import {
+  idbSaveHistoryItem,
+  idbSaveAllHistory,
+  idbLoadHistory,
+  idbDeleteHistoryItem,
+  idbClearHistory,
+  idbSet,
+  idbGet,
+  idbDelete
+} from './indexedDb';
 
 export interface SavedHistoryItem {
   id: string;
@@ -34,11 +44,17 @@ function isLocalStorageAvailable(): boolean {
 }
 
 /**
- * Safely sets an item in LocalStorage with automatic quota recovery.
- * If QuotaExceededError occurs, it progressively prunes older history items to preserve
- * current application state and user data.
+ * Safely sets an item in LocalStorage with automatic IndexedDB fallback and quota recovery.
+ * If QuotaExceededError occurs or LocalStorage is disabled, it writes directly to IndexedDB.
  */
 function safeSetItem(key: string, value: string): boolean {
+  // Always mirror asynchronously to IndexedDB for unlimited durable storage
+  idbSet(key, value).catch(() => {});
+
+  if (!isLocalStorageAvailable()) {
+    return false;
+  }
+
   try {
     window.localStorage.setItem(key, value);
     return true;
@@ -51,30 +67,30 @@ function safeSetItem(key: string, value: string): boolean {
         error.code === 1014);
 
     if (isQuotaError) {
-      console.warn(`LocalStorage quota exceeded while saving "${key}". Evicting older history to recover space...`);
+      console.warn(`LocalStorage quota exceeded while saving "${key}". Using IndexedDB fallback...`);
+      // Ensure the value is securely saved in IndexedDB
+      idbSet(key, value).catch(() => {});
+
       try {
         const rawHistory = window.localStorage.getItem(STORAGE_KEY_HISTORY);
         if (rawHistory) {
           const parsed = JSON.parse(rawHistory);
           if (Array.isArray(parsed) && parsed.length > 3) {
-            // Trim to newest 3 items
+            // Trim to newest 3 items in localStorage (full history is preserved in IndexedDB)
             const trimmed = parsed.slice(0, 3);
             window.localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(trimmed));
-            // Try saving the target item again
             window.localStorage.setItem(key, value);
             return true;
           } else if (key !== STORAGE_KEY_HISTORY) {
-            // Clear history completely to prioritize the current active analysis
             window.localStorage.removeItem(STORAGE_KEY_HISTORY);
             window.localStorage.setItem(key, value);
             return true;
           }
         }
       } catch (recoveryError) {
-        console.error('Failed recovery from QuotaExceededError:', recoveryError);
+        console.error('LocalStorage recovery error (IndexedDB holds primary backup):', recoveryError);
       }
     }
-    console.warn(`Unable to write to LocalStorage key "${key}":`, error);
     return false;
   }
 }
@@ -148,30 +164,34 @@ export function clearCurrentAnalysis(): void {
 }
 
 /**
- * Adds an analysis to the persistent history list in LocalStorage
+ * Adds an analysis to the persistent history list.
+ * Saves to LocalStorage and mirrors to IndexedDB for unlimited long-term storage.
  */
 export function saveToHistory(
   analysis: AnalysisResult,
   isUsingAi: boolean | null = null
 ): SavedHistoryItem[] {
-  if (!isLocalStorageAvailable()) return [];
+  const historyEntry: SavedHistoryItem = {
+    id: analysis.id || `analysis_${Date.now()}`,
+    savedAt: new Date().toISOString(),
+    option1Title: analysis.option1Title,
+    option2Title: analysis.option2Title,
+    winner: analysis.verdict.winner,
+    winnerTitle: analysis.verdict.winnerTitle,
+    confidenceScore: analysis.verdict.confidenceScore,
+    isUsingAi,
+    data: analysis
+  };
+
+  // Always persist item to IndexedDB (unlimited capacity)
+  idbSaveHistoryItem(historyEntry).catch(() => {});
+
+  if (!isLocalStorageAvailable()) return [historyEntry];
 
   try {
     const currentHistory = loadHistory();
 
-    const historyEntry: SavedHistoryItem = {
-      id: analysis.id || `analysis_${Date.now()}`,
-      savedAt: new Date().toISOString(),
-      option1Title: analysis.option1Title,
-      option2Title: analysis.option2Title,
-      winner: analysis.verdict.winner,
-      winnerTitle: analysis.verdict.winnerTitle,
-      confidenceScore: analysis.verdict.confidenceScore,
-      isUsingAi,
-      data: analysis
-    };
-
-    // Filter out duplicate identical ID or identical options if exists, and prepend newest
+    // Filter out duplicate identical ID, and prepend newest
     const filtered = currentHistory.filter(item => item.id !== historyEntry.id);
     const updated = [historyEntry, ...filtered].slice(0, MAX_HISTORY_ITEMS);
 
@@ -179,12 +199,12 @@ export function saveToHistory(
     return updated;
   } catch (error) {
     console.warn('Failed to save analysis to history in LocalStorage:', error);
-    return [];
+    return [historyEntry];
   }
 }
 
 /**
- * Loads the list of historical analyses
+ * Loads the list of historical analyses from LocalStorage
  */
 export function loadHistory(): SavedHistoryItem[] {
   if (!isLocalStorageAvailable()) return [];
@@ -205,9 +225,12 @@ export function loadHistory(): SavedHistoryItem[] {
 }
 
 /**
- * Removes a single item from the history
+ * Removes a single item from the history in both LocalStorage and IndexedDB
  */
 export function deleteFromHistory(id: string): SavedHistoryItem[] {
+  // Remove from IndexedDB
+  idbDeleteHistoryItem(id).catch(() => {});
+
   if (!isLocalStorageAvailable()) return [];
 
   try {
@@ -222,14 +245,62 @@ export function deleteFromHistory(id: string): SavedHistoryItem[] {
 }
 
 /**
- * Clears all saved analyses history
+ * Clears all saved analyses history from both LocalStorage and IndexedDB
  */
 export function clearAllHistory(): void {
+  // Clear IndexedDB
+  idbClearHistory().catch(() => {});
+
   if (!isLocalStorageAvailable()) return;
   try {
     window.localStorage.removeItem(STORAGE_KEY_HISTORY);
   } catch (error) {
     console.warn('Failed to clear history:', error);
+  }
+}
+
+/**
+ * Synchronizes history with IndexedDB fallback.
+ * If LocalStorage was trimmed or cleared, this merges all history items stored in IndexedDB.
+ */
+export async function syncHistoryWithIndexedDB(): Promise<SavedHistoryItem[]> {
+  try {
+    const idbItems = await idbLoadHistory();
+    const lsItems = loadHistory();
+
+    if (idbItems.length === 0 && lsItems.length > 0) {
+      // Seed IndexedDB from LocalStorage
+      idbSaveAllHistory(lsItems).catch(() => {});
+      return lsItems;
+    }
+
+    // Merge unique items by ID
+    const map = new Map<string, SavedHistoryItem>();
+    for (const item of idbItems) {
+      if (item && item.id) map.set(item.id, item);
+    }
+    for (const item of lsItems) {
+      if (item && item.id && !map.has(item.id)) map.set(item.id, item);
+    }
+
+    const merged = Array.from(map.values()).sort(
+      (a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime()
+    );
+
+    // If IndexedDB had items not in LocalStorage, keep LocalStorage updated up to its capacity
+    if (merged.length > lsItems.length) {
+      const topItems = merged.slice(0, MAX_HISTORY_ITEMS);
+      if (isLocalStorageAvailable()) {
+        try {
+          window.localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(topItems));
+        } catch {}
+      }
+    }
+
+    return merged;
+  } catch (error) {
+    console.warn('Failed to sync history with IndexedDB:', error);
+    return loadHistory();
   }
 }
 

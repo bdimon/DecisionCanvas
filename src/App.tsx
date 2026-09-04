@@ -22,6 +22,7 @@ import {
   clearAllHistory,
   saveActiveTab,
   loadActiveTab,
+  syncHistoryWithIndexedDB,
   SavedHistoryItem
 } from './utils/storage';
 import {
@@ -43,16 +44,17 @@ export default function App() {
   // Initialize analysis from LocalStorage if user had an active session, otherwise use preset
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(() => {
     const saved = loadCurrentAnalysis();
-    if (saved?.analysis) {
-      return saved.analysis;
-    }
-    const presets = getPresets('ru');
+    const savedLanguage = (typeof window !== 'undefined' ? localStorage.getItem('decision_canvas_lang') : null) || 'ru';
+
+    if (saved?.analysis) return saved.analysis;
+
+    const presets = getPresets(savedLanguage as 'ru' | 'en');
     const defaultPreset = presets[0];
     return generateLocalAnalysis(
       defaultPreset.option1,
       defaultPreset.option2,
       defaultPreset.context,
-      'ru'
+      savedLanguage as 'ru' | 'en'
     );
   });
 
@@ -83,6 +85,15 @@ export default function App() {
     const saved = loadCurrentAnalysis();
     return Boolean(saved?.analysis);
   });
+
+  // Synchronize history with IndexedDB fallback/extended storage
+  useEffect(() => {
+    syncHistoryWithIndexedDB().then((syncedItems) => {
+      if (syncedItems && syncedItems.length > 0) {
+        setHistoryItems(syncedItems);
+      }
+    });
+  }, []);
 
   // Keep LocalStorage synchronized with any changes to the current active analysis
   useEffect(() => {
@@ -117,6 +128,24 @@ export default function App() {
         language === 'en'
           ? 'Both decision options are required. Please provide valid choices to compare.'
           : 'Оба варианта решения обязательны для заполнения. Пожалуйста, укажите реальные варианты для сравнения.'
+      );
+      return;
+    }
+
+    // Explicit offline check before attempting network fetch
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      const local = generateLocalAnalysis(opt1, opt2, ctx, language);
+      setAnalysis(local);
+      setIsUsingAi(false);
+      saveCurrentAnalysis(local, false);
+      const updatedHistory = saveToHistory(local, false);
+      setHistoryItems(updatedHistory);
+      setHasRestoredSession(false);
+      // Explicit offline message
+      setError(
+        language === 'en'
+          ? 'Creating analysis offline — using local engine'
+          : 'Анализ создан в режиме офлайн — используется встроенный движок'
       );
       return;
     }
