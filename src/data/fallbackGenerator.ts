@@ -76,8 +76,16 @@ export function generateLocalAnalysis(
   language: 'ru' | 'en' = 'ru'
 ): AnalysisResult {
   const isEn = language === 'en';
-  const opt1 = option1.trim() || (isEn ? 'Option A' : 'Вариант 1');
-  const opt2 = option2.trim() || (isEn ? 'Option B' : 'Вариант 2');
+  const opt1 = typeof option1 === 'string' ? option1.trim() : '';
+  const opt2 = typeof option2 === 'string' ? option2.trim() : '';
+
+  if (!opt1 || !opt2) {
+    throw new Error(
+      isEn
+        ? 'Both decision options must be non-empty strings. Please specify valid options to compare.'
+        : 'Оба варианта решения должны быть заполнены. Пожалуйста, укажите реальные варианты для сравнения.'
+    );
+  }
 
   const p1 = extractProfile(opt1);
   const p2 = extractProfile(opt2);

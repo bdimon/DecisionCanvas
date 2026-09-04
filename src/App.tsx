@@ -44,6 +44,19 @@ export default function App() {
   }, [language]);
 
   const handleStartAnalysis = async (option1: string, option2: string, context?: string) => {
+    const opt1 = typeof option1 === 'string' ? option1.trim() : '';
+    const opt2 = typeof option2 === 'string' ? option2.trim() : '';
+    const ctx = typeof context === 'string' ? context.trim() || undefined : undefined;
+
+    if (!opt1 || !opt2) {
+      setError(
+        language === 'en'
+          ? 'Both decision options are required. Please provide valid choices to compare.'
+          : 'Оба варианта решения обязательны для заполнения. Пожалуйста, укажите реальные варианты для сравнения.'
+      );
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
@@ -51,11 +64,20 @@ export default function App() {
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ option1, option2, context, language }),
+        body: JSON.stringify({ option1: opt1, option2: opt2, context: ctx, language }),
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorJson = await response.json().catch(() => null);
+        const serverErrorMessage = errorJson?.error || `HTTP error! status: ${response.status}`;
+
+        // If client sent invalid input (400), display server validation error and do not generate fallback
+        if (response.status === 400) {
+          setError(serverErrorMessage);
+          return;
+        }
+
+        throw new Error(serverErrorMessage);
       }
 
       const resData = await response.json();
@@ -65,16 +87,20 @@ export default function App() {
         setIsUsingAi(Boolean(resData.usingAI));
       } else {
         // Use intelligent local generator with current language
-        const local = generateLocalAnalysis(option1, option2, context, language);
+        const local = generateLocalAnalysis(opt1, opt2, ctx, language);
         setAnalysis(local);
         setIsUsingAi(false);
       }
-    } catch {
-      // Resilient fallback so app never hangs
-      console.log('Notice: Fallback engine activated on client.');
-      const local = generateLocalAnalysis(option1, option2, context, language);
-      setAnalysis(local);
-      setIsUsingAi(false);
+    } catch (err: any) {
+      // Resilient fallback for server downtime / offline mode, but ONLY with valid non-empty options
+      console.log('Notice: Fallback engine activated on client due to error:', err?.message);
+      try {
+        const local = generateLocalAnalysis(opt1, opt2, ctx, language);
+        setAnalysis(local);
+        setIsUsingAi(false);
+      } catch (fallbackErr: any) {
+        setError(fallbackErr.message || (language === 'en' ? 'Failed to perform analysis' : 'Ошибка при анализе вариантов'));
+      }
     } finally {
       setIsLoading(false);
     }

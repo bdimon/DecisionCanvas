@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, ArrowRight, BookOpen, HelpCircle } from 'lucide-react';
+import { Sparkles, ArrowRight, BookOpen, HelpCircle, AlertCircle } from 'lucide-react';
 import { getPresets } from '../data/presets';
 import { PresetExample } from '../types';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -15,6 +15,7 @@ export const DecisionForm: React.FC<DecisionFormProps> = ({ onSubmit, isLoading 
   const [option2, setOption2] = useState('');
   const [context, setContext] = useState('');
   const [showContext, setShowContext] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   const presets = getPresets(language);
 
@@ -23,12 +24,25 @@ export const DecisionForm: React.FC<DecisionFormProps> = ({ onSubmit, isLoading 
     setOption2(preset.option2);
     setContext(preset.context);
     setShowContext(true);
+    setValidationError(null);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!option1.trim() || !option2.trim()) return;
-    onSubmit(option1.trim(), option2.trim(), context.trim() || undefined);
+    const opt1 = option1.trim();
+    const opt2 = option2.trim();
+
+    if (!opt1 || !opt2) {
+      setValidationError(
+        language === 'en'
+          ? 'Please provide both options before running the analysis.'
+          : 'Пожалуйста, заполните оба варианта перед запуском анализа.'
+      );
+      return;
+    }
+
+    setValidationError(null);
+    onSubmit(opt1, opt2, context.trim() || undefined);
   };
 
   return (
@@ -84,9 +98,11 @@ export const DecisionForm: React.FC<DecisionFormProps> = ({ onSubmit, isLoading 
                 id="option-1-input"
                 rows={3}
                 value={option1}
-                onChange={(e) => setOption1(e.target.value)}
+                onChange={(e) => {
+                  setOption1(e.target.value);
+                  if (validationError) setValidationError(null);
+                }}
                 placeholder={t.form.option1Placeholder}
-                required
                 className="w-full bg-white border border-slate-200 rounded-lg p-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500 resize-none shadow-2xs"
               />
             </div>
@@ -103,9 +119,11 @@ export const DecisionForm: React.FC<DecisionFormProps> = ({ onSubmit, isLoading 
                 id="option-2-input"
                 rows={3}
                 value={option2}
-                onChange={(e) => setOption2(e.target.value)}
+                onChange={(e) => {
+                  setOption2(e.target.value);
+                  if (validationError) setValidationError(null);
+                }}
                 placeholder={t.form.option2Placeholder}
-                required
                 className="w-full bg-white border border-slate-200 rounded-lg p-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 resize-none shadow-2xs"
               />
             </div>
@@ -152,12 +170,20 @@ export const DecisionForm: React.FC<DecisionFormProps> = ({ onSubmit, isLoading 
             )}
           </div>
 
+          {/* Validation Alert */}
+          {validationError && (
+            <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs sm:text-sm px-3.5 py-2.5 rounded-lg flex items-center space-x-2">
+              <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+              <span>{validationError}</span>
+            </div>
+          )}
+
           {/* Action Button */}
           <div className="pt-2 flex items-center justify-end">
             <button
               type="submit"
               id="start-analysis-btn"
-              disabled={isLoading || !option1.trim() || !option2.trim()}
+              disabled={isLoading}
               className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white font-semibold text-sm rounded-lg shadow-md shadow-indigo-100 transition-all disabled:cursor-not-allowed cursor-pointer"
             >
               {isLoading ? (
