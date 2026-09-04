@@ -47,6 +47,8 @@ export interface DecisionVerdict {
   keyDrivers: string[];
   tradeOffSummary: string;
   recommendedNextSteps: string[];
+  isCustomized?: boolean;
+  originalVerdict?: DecisionVerdict;
 }
 
 export interface AnalysisResult {

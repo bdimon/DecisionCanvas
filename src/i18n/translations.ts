@@ -93,6 +93,16 @@ export interface TranslationDict {
     downloadJson: string;
     tieTitle: string;
     tie: string;
+    recalculateVerdict: string;
+    editVerdict: string;
+    saveVerdict: string;
+    cancelEdit: string;
+    resetToAi: string;
+    dynamicallyGenerated: string;
+    userEdited: string;
+    addDriver: string;
+    addStep: string;
+    remove: string;
   };
   pwa: {
     install: string;
@@ -248,6 +258,16 @@ export const translations: Record<Language, TranslationDict> = {
       downloadJson: 'Скачать в JSON',
       tieTitle: 'Паритет (Оба варианта равнозначны)',
       tie: 'Равный паритет',
+      recalculateVerdict: 'Пересчитать вердикт по критериям',
+      editVerdict: 'Редактировать вердикт',
+      saveVerdict: 'Сохранить вердикт',
+      cancelEdit: 'Отмена',
+      resetToAi: 'Сбросить к исходному',
+      dynamicallyGenerated: 'Синтезирован по вашим критериям',
+      userEdited: 'Изменен пользователем',
+      addDriver: '+ Добавить фактор',
+      addStep: '+ Добавить шаг',
+      remove: 'Удалить',
     },
     pwa: {
       install: 'Установить',
@@ -401,6 +421,16 @@ export const translations: Record<Language, TranslationDict> = {
       downloadJson: 'Download JSON',
       tieTitle: 'Parity (Both alternatives are equally viable)',
       tie: 'Equal Parity',
+      recalculateVerdict: 'Recalculate Verdict from Criteria',
+      editVerdict: 'Edit Verdict',
+      saveVerdict: 'Save Verdict',
+      cancelEdit: 'Cancel',
+      resetToAi: 'Reset to Original',
+      dynamicallyGenerated: 'Dynamically synthesized from criteria',
+      userEdited: 'Customized by user',
+      addDriver: '+ Add Driver',
+      addStep: '+ Add Step',
+      remove: 'Remove',
     },
     pwa: {
       install: 'Install',

@@ -10,7 +10,7 @@ import { AndroidVirtualDevice } from './components/AndroidVirtualDevice';
 import { HistoryModal } from './components/HistoryModal';
 import { generateLocalAnalysis } from './data/fallbackGenerator';
 import { getPresets } from './data/presets';
-import { AnalysisResult, ActiveTab, ProsConsResult, ComparisonCriterion, SWOTResult } from './types';
+import { AnalysisResult, ActiveTab, ProsConsResult, ComparisonCriterion, SWOTResult, DecisionVerdict } from './types';
 import { useLanguage } from './i18n/LanguageContext';
 import {
   saveCurrentAnalysis,
@@ -236,14 +236,30 @@ export default function App() {
 
   const handleUpdateProsCons = (updated: ProsConsResult) => {
     if (!analysis) return;
-    const next = { ...analysis, prosCons: updated };
+    const originalVerdict = analysis.verdict.originalVerdict || analysis.verdict;
+    const next = {
+      ...analysis,
+      prosCons: updated,
+      verdict: {
+        ...analysis.verdict,
+        originalVerdict
+      }
+    };
     setAnalysis(next);
     saveCurrentAnalysis(next, isUsingAi);
   };
 
   const handleUpdateComparisonTable = (updated: ComparisonCriterion[]) => {
     if (!analysis) return;
-    const next = { ...analysis, comparisonTable: updated };
+    const originalVerdict = analysis.verdict.originalVerdict || analysis.verdict;
+    const next = {
+      ...analysis,
+      comparisonTable: updated,
+      verdict: {
+        ...analysis.verdict,
+        originalVerdict
+      }
+    };
     setAnalysis(next);
     saveCurrentAnalysis(next, isUsingAi);
   };
@@ -251,6 +267,26 @@ export default function App() {
   const handleUpdateSwot = (updated: SWOTResult) => {
     if (!analysis) return;
     const next = { ...analysis, swot: updated };
+    setAnalysis(next);
+    saveCurrentAnalysis(next, isUsingAi);
+  };
+
+  const handleUpdateVerdict = (updatedVerdict: DecisionVerdict) => {
+    if (!analysis) return;
+    const next = { ...analysis, verdict: updatedVerdict };
+    setAnalysis(next);
+    saveCurrentAnalysis(next, isUsingAi);
+  };
+
+  const handleResetVerdict = () => {
+    if (!analysis || !analysis.verdict.originalVerdict) return;
+    const next = {
+      ...analysis,
+      verdict: {
+        ...analysis.verdict.originalVerdict,
+        originalVerdict: analysis.verdict.originalVerdict
+      }
+    };
     setAnalysis(next);
     saveCurrentAnalysis(next, isUsingAi);
   };
@@ -470,6 +506,8 @@ export default function App() {
                   <VerdictCard
                     analysis={analysis}
                     calculatedWinner={calculatedWinner}
+                    onUpdateVerdict={handleUpdateVerdict}
+                    onResetVerdict={handleResetVerdict}
                   />
 
                   {/* Section 1: Pros & Cons */}
@@ -603,6 +641,8 @@ export default function App() {
                   <VerdictCard
                     analysis={analysis}
                     calculatedWinner={calculatedWinner}
+                    onUpdateVerdict={handleUpdateVerdict}
+                    onResetVerdict={handleResetVerdict}
                   />
                 </div>
               )}
