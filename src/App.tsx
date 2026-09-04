@@ -7,10 +7,23 @@ import { SwotMatrixView } from './components/SwotMatrixView';
 import { VerdictCard } from './components/VerdictCard';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { AndroidVirtualDevice } from './components/AndroidVirtualDevice';
+import { HistoryModal } from './components/HistoryModal';
 import { generateLocalAnalysis } from './data/fallbackGenerator';
 import { getPresets } from './data/presets';
-import { AnalysisResult, ActiveTab } from './types';
+import { AnalysisResult, ActiveTab, ProsConsResult, ComparisonCriterion, SWOTResult } from './types';
 import { useLanguage } from './i18n/LanguageContext';
+import {
+  saveCurrentAnalysis,
+  loadCurrentAnalysis,
+  clearCurrentAnalysis,
+  saveToHistory,
+  loadHistory,
+  deleteFromHistory,
+  clearAllHistory,
+  saveActiveTab,
+  loadActiveTab,
+  SavedHistoryItem
+} from './utils/storage';
 import {
   ListChecks,
   Table,
@@ -18,30 +31,71 @@ import {
   Trophy,
   Layers,
   ArrowLeftRight,
-  Info
+  Info,
+  HardDrive,
+  CheckCircle2,
+  Clock
 } from 'lucide-react';
 
 export default function App() {
   const { language, t } = useLanguage();
-  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<ActiveTab>('all');
-  const [isUsingAi, setIsUsingAi] = useState<boolean | null>(null);
-  const [isAndroidView, setIsAndroidView] = useState(false);
 
-  // Initialize with the localized preset on mount and when language changes (if on default)
-  useEffect(() => {
-    const presets = getPresets(language);
+  // Initialize analysis from LocalStorage if user had an active session, otherwise use preset
+  const [analysis, setAnalysis] = useState<AnalysisResult | null>(() => {
+    const saved = loadCurrentAnalysis();
+    if (saved?.analysis) {
+      return saved.analysis;
+    }
+    const presets = getPresets('ru');
     const defaultPreset = presets[0];
-    const initialData = generateLocalAnalysis(
+    return generateLocalAnalysis(
       defaultPreset.option1,
       defaultPreset.option2,
       defaultPreset.context,
-      language
+      'ru'
     );
-    setAnalysis(initialData);
-  }, [language]);
+  });
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [activeTab, setActiveTab] = useState<ActiveTab>(() => {
+    const savedTab = loadActiveTab();
+    if (savedTab && ['all', 'pros-cons', 'comparison', 'swot', 'verdict'].includes(savedTab)) {
+      return savedTab as ActiveTab;
+    }
+    return 'all';
+  });
+
+  const [isUsingAi, setIsUsingAi] = useState<boolean | null>(() => {
+    const saved = loadCurrentAnalysis();
+    return saved?.isUsingAi ?? null;
+  });
+
+  const [isAndroidView, setIsAndroidView] = useState(false);
+  const [historyItems, setHistoryItems] = useState<SavedHistoryItem[]>(() => loadHistory());
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [lastSavedTime, setLastSavedTime] = useState<string | null>(() => {
+    const saved = loadCurrentAnalysis();
+    return saved?.lastSavedAt || null;
+  });
+  const [hasRestoredSession, setHasRestoredSession] = useState<boolean>(() => {
+    const saved = loadCurrentAnalysis();
+    return Boolean(saved?.analysis);
+  });
+
+  // Keep LocalStorage synchronized with any changes to the current active analysis
+  useEffect(() => {
+    if (analysis) {
+      saveCurrentAnalysis(analysis, isUsingAi);
+      setLastSavedTime(new Date().toISOString());
+    }
+  }, [analysis, isUsingAi]);
+
+  const handleTabChange = (tab: ActiveTab) => {
+    setActiveTab(tab);
+    saveActiveTab(tab);
+  };
 
   const handleStartAnalysis = async (option1: string, option2: string, context?: string) => {
     const opt1 = typeof option1 === 'string' ? option1.trim() : '';
@@ -82,15 +136,24 @@ export default function App() {
 
       const resData = await response.json();
 
+      let finalResult: AnalysisResult;
+      let finalUsingAi: boolean;
+
       if (resData.data) {
-        setAnalysis(resData.data);
-        setIsUsingAi(Boolean(resData.usingAI));
+        finalResult = resData.data;
+        finalUsingAi = Boolean(resData.usingAI);
       } else {
         // Use intelligent local generator with current language
-        const local = generateLocalAnalysis(opt1, opt2, ctx, language);
-        setAnalysis(local);
-        setIsUsingAi(false);
+        finalResult = generateLocalAnalysis(opt1, opt2, ctx, language);
+        finalUsingAi = false;
       }
+
+      setAnalysis(finalResult);
+      setIsUsingAi(finalUsingAi);
+      saveCurrentAnalysis(finalResult, finalUsingAi);
+      const updatedHistory = saveToHistory(finalResult, finalUsingAi);
+      setHistoryItems(updatedHistory);
+      setHasRestoredSession(false);
     } catch (err: any) {
       // Resilient fallback for server downtime / offline mode, but ONLY with valid non-empty options
       console.log('Notice: Fallback engine activated on client due to error:', err?.message);
@@ -98,6 +161,10 @@ export default function App() {
         const local = generateLocalAnalysis(opt1, opt2, ctx, language);
         setAnalysis(local);
         setIsUsingAi(false);
+        saveCurrentAnalysis(local, false);
+        const updatedHistory = saveToHistory(local, false);
+        setHistoryItems(updatedHistory);
+        setHasRestoredSession(false);
       } catch (fallbackErr: any) {
         setError(fallbackErr.message || (language === 'en' ? 'Failed to perform analysis' : 'Ошибка при анализе вариантов'));
       }
@@ -116,7 +183,32 @@ export default function App() {
       language
     );
     setAnalysis(initialData);
+    setIsUsingAi(null);
+    clearCurrentAnalysis();
+    saveCurrentAnalysis(initialData, null);
     setError(null);
+    setHasRestoredSession(false);
+  };
+
+  const handleUpdateProsCons = (updated: ProsConsResult) => {
+    if (!analysis) return;
+    const next = { ...analysis, prosCons: updated };
+    setAnalysis(next);
+    saveCurrentAnalysis(next, isUsingAi);
+  };
+
+  const handleUpdateComparisonTable = (updated: ComparisonCriterion[]) => {
+    if (!analysis) return;
+    const next = { ...analysis, comparisonTable: updated };
+    setAnalysis(next);
+    saveCurrentAnalysis(next, isUsingAi);
+  };
+
+  const handleUpdateSwot = (updated: SWOTResult) => {
+    if (!analysis) return;
+    const next = { ...analysis, swot: updated };
+    setAnalysis(next);
+    saveCurrentAnalysis(next, isUsingAi);
   };
 
   // Recompute overall winner dynamically if user changes criteria or pros/cons weights
@@ -151,9 +243,29 @@ export default function App() {
         onPrint={() => window.print()}
         isAndroidView={isAndroidView}
         onToggleAndroidView={() => setIsAndroidView(!isAndroidView)}
+        historyCount={historyItems.length}
+        onOpenHistory={() => setIsHistoryOpen(true)}
+        lastSavedText={lastSavedTime ? t.storage.savedJustNow : null}
       />
 
       <main className="flex-1 max-w-6xl w-full mx-auto px-3 sm:px-6 py-5 sm:py-8 space-y-6">
+        {/* Restored Session Notification */}
+        {hasRestoredSession && (
+          <div className="bg-indigo-50/90 border border-indigo-200 text-indigo-900 px-4 py-2.5 rounded-xl text-xs flex items-center justify-between shadow-2xs">
+            <div className="flex items-center space-x-2">
+              <HardDrive className="w-4 h-4 text-indigo-600 shrink-0" />
+              <span className="font-medium">{t.storage.restoredNotice}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setHasRestoredSession(false)}
+              className="text-xs font-bold text-indigo-600 hover:text-indigo-800 cursor-pointer ml-3 shrink-0"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* Input Form */}
         <DecisionForm
           onSubmit={handleStartAnalysis}
@@ -236,7 +348,7 @@ export default function App() {
               <button
                 type="button"
                 id="tab-all"
-                onClick={() => setActiveTab('all')}
+                onClick={() => handleTabChange('all')}
                 className={`inline-flex items-center space-x-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                   activeTab === 'all'
                     ? 'bg-white text-indigo-700 shadow-2xs border border-slate-200/60'
@@ -250,7 +362,7 @@ export default function App() {
               <button
                 type="button"
                 id="tab-pros-cons"
-                onClick={() => setActiveTab('pros-cons')}
+                onClick={() => handleTabChange('pros-cons')}
                 className={`inline-flex items-center space-x-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                   activeTab === 'pros-cons'
                     ? 'bg-white text-indigo-700 shadow-2xs border border-slate-200/60'
@@ -264,7 +376,7 @@ export default function App() {
               <button
                 type="button"
                 id="tab-comparison"
-                onClick={() => setActiveTab('comparison')}
+                onClick={() => handleTabChange('comparison')}
                 className={`inline-flex items-center space-x-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                   activeTab === 'comparison'
                     ? 'bg-white text-indigo-700 shadow-2xs border border-slate-200/60'
@@ -278,7 +390,7 @@ export default function App() {
               <button
                 type="button"
                 id="tab-swot"
-                onClick={() => setActiveTab('swot')}
+                onClick={() => handleTabChange('swot')}
                 className={`inline-flex items-center space-x-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                   activeTab === 'swot'
                     ? 'bg-white text-indigo-700 shadow-2xs border border-slate-200/60'
@@ -292,7 +404,7 @@ export default function App() {
               <button
                 type="button"
                 id="tab-verdict"
-                onClick={() => setActiveTab('verdict')}
+                onClick={() => handleTabChange('verdict')}
                 className={`inline-flex items-center space-x-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                   activeTab === 'verdict'
                     ? 'bg-white text-indigo-700 shadow-2xs border border-slate-200/60'
@@ -332,7 +444,7 @@ export default function App() {
                       prosCons={analysis.prosCons}
                       option1Title={analysis.option1Title}
                       option2Title={analysis.option2Title}
-                      onChange={(updated) => setAnalysis({ ...analysis, prosCons: updated })}
+                      onChange={handleUpdateProsCons}
                     />
                   </section>
 
@@ -353,7 +465,7 @@ export default function App() {
                       criteria={analysis.comparisonTable}
                       option1Title={analysis.option1Title}
                       option2Title={analysis.option2Title}
-                      onChange={(updated) => setAnalysis({ ...analysis, comparisonTable: updated })}
+                      onChange={handleUpdateComparisonTable}
                     />
                   </section>
 
@@ -374,7 +486,7 @@ export default function App() {
                       swot={analysis.swot}
                       option1Title={analysis.option1Title}
                       option2Title={analysis.option2Title}
-                      onChange={(updated) => setAnalysis({ ...analysis, swot: updated })}
+                      onChange={handleUpdateSwot}
                     />
                   </section>
                 </div>
@@ -395,7 +507,7 @@ export default function App() {
                     prosCons={analysis.prosCons}
                     option1Title={analysis.option1Title}
                     option2Title={analysis.option2Title}
-                    onChange={(updated) => setAnalysis({ ...analysis, prosCons: updated })}
+                    onChange={handleUpdateProsCons}
                   />
                 </div>
               )}
@@ -415,7 +527,7 @@ export default function App() {
                     criteria={analysis.comparisonTable}
                     option1Title={analysis.option1Title}
                     option2Title={analysis.option2Title}
-                    onChange={(updated) => setAnalysis({ ...analysis, comparisonTable: updated })}
+                    onChange={handleUpdateComparisonTable}
                   />
                 </div>
               )}
@@ -435,7 +547,7 @@ export default function App() {
                     swot={analysis.swot}
                     option1Title={analysis.option1Title}
                     option2Title={analysis.option2Title}
-                    onChange={(updated) => setAnalysis({ ...analysis, swot: updated })}
+                    onChange={handleUpdateSwot}
                   />
                 </div>
               )}
@@ -453,6 +565,28 @@ export default function App() {
           </div>
         )}
       </main>
+
+      {/* History Slide-over / Modal */}
+      <HistoryModal
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        historyItems={historyItems}
+        currentAnalysisId={analysis?.id}
+        onSelectAnalysis={(selected, usingAi) => {
+          setAnalysis(selected);
+          setIsUsingAi(usingAi);
+          saveCurrentAnalysis(selected, usingAi);
+          setHasRestoredSession(false);
+        }}
+        onDeleteHistoryItem={(id) => {
+          const updated = deleteFromHistory(id);
+          setHistoryItems(updated);
+        }}
+        onClearAllHistory={() => {
+          clearAllHistory();
+          setHistoryItems([]);
+        }}
+      />
 
       <footer className="border-t border-slate-200 bg-white py-4 mt-auto">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">

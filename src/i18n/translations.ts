@@ -134,6 +134,24 @@ export interface TranslationDict {
     browserMode: string;
     carrier: string;
   };
+  storage: {
+    savedLocally: string;
+    saving: string;
+    savedJustNow: string;
+    historyButton: string;
+    historyTitle: string;
+    historySubtitle: string;
+    emptyHistory: string;
+    emptyHistoryDesc: string;
+    loadComparison: string;
+    deleteItem: string;
+    clearAll: string;
+    clearAllConfirm: string;
+    itemsCount: string;
+    lastSaved: string;
+    restoredNotice: string;
+    activeSession: string;
+  };
 }
 
 export const translations: Record<Language, TranslationDict> = {
@@ -271,6 +289,24 @@ export const translations: Record<Language, TranslationDict> = {
       browserMode: 'Chrome Mobile',
       carrier: 'Google Fi 5G',
     },
+    storage: {
+      savedLocally: 'Сохранено в LocalStorage',
+      saving: 'Сохранение...',
+      savedJustNow: 'Сохранено только что',
+      historyButton: 'История анализов',
+      historyTitle: 'Сохранённые сравнения',
+      historySubtitle: 'Все ваши анализы автоматически сохраняются в памяти браузера (LocalStorage)',
+      emptyHistory: 'История пока пуста',
+      emptyHistoryDesc: 'Проведите сравнение двух альтернатив — оно сразу сохранится здесь.',
+      loadComparison: 'Открыть анализ',
+      deleteItem: 'Удалить',
+      clearAll: 'Очистить всю историю',
+      clearAllConfirm: 'Вы уверены, что хотите удалить все сохранённые анализы?',
+      itemsCount: 'анализов сохранено',
+      lastSaved: 'Сохранено',
+      restoredNotice: 'Восстановлен предыдущий анализ из LocalStorage',
+      activeSession: 'Текущий открытый анализ',
+    },
   },
   en: {
     header: {
@@ -405,6 +441,24 @@ export const translations: Record<Language, TranslationDict> = {
       standaloneMode: 'PWA Standalone',
       browserMode: 'Chrome Mobile',
       carrier: 'Google Fi 5G',
+    },
+    storage: {
+      savedLocally: 'Saved in LocalStorage',
+      saving: 'Saving...',
+      savedJustNow: 'Saved just now',
+      historyButton: 'History',
+      historyTitle: 'Saved Comparisons',
+      historySubtitle: 'All your analyses are automatically preserved in browser storage (LocalStorage)',
+      emptyHistory: 'No saved analyses yet',
+      emptyHistoryDesc: 'Run a comparison between two alternatives — it will be saved here automatically.',
+      loadComparison: 'Open Analysis',
+      deleteItem: 'Delete',
+      clearAll: 'Clear All History',
+      clearAllConfirm: 'Are you sure you want to delete all saved analyses?',
+      itemsCount: 'saved analyses',
+      lastSaved: 'Saved',
+      restoredNotice: 'Restored previous analysis from LocalStorage',
+      activeSession: 'Current active analysis',
     },
   },
 };

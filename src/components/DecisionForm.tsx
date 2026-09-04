@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sparkles, ArrowRight, BookOpen, HelpCircle, AlertCircle } from 'lucide-react';
 import { getPresets } from '../data/presets';
 import { PresetExample } from '../types';
 import { useLanguage } from '../i18n/LanguageContext';
+import { saveFormDraft, loadFormDraft, clearFormDraft } from '../utils/storage';
 
 interface DecisionFormProps {
   onSubmit: (option1: string, option2: string, context?: string) => void;
@@ -17,6 +18,19 @@ export const DecisionForm: React.FC<DecisionFormProps> = ({ onSubmit, isLoading 
   const [showContext, setShowContext] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
+  // Restore draft from LocalStorage on mount
+  useEffect(() => {
+    const draft = loadFormDraft();
+    if (draft && (draft.option1 || draft.option2 || draft.context)) {
+      setOption1(draft.option1 || '');
+      setOption2(draft.option2 || '');
+      setContext(draft.context || '');
+      if (draft.context) {
+        setShowContext(true);
+      }
+    }
+  }, []);
+
   const presets = getPresets(language);
 
   const handleApplyPreset = (preset: PresetExample) => {
@@ -25,6 +39,24 @@ export const DecisionForm: React.FC<DecisionFormProps> = ({ onSubmit, isLoading 
     setContext(preset.context);
     setShowContext(true);
     setValidationError(null);
+    saveFormDraft({ option1: preset.option1, option2: preset.option2, context: preset.context });
+  };
+
+  const handleOption1Change = (val: string) => {
+    setOption1(val);
+    if (validationError) setValidationError(null);
+    saveFormDraft({ option1: val, option2, context });
+  };
+
+  const handleOption2Change = (val: string) => {
+    setOption2(val);
+    if (validationError) setValidationError(null);
+    saveFormDraft({ option1, option2: val, context });
+  };
+
+  const handleContextChange = (val: string) => {
+    setContext(val);
+    saveFormDraft({ option1, option2, context: val });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -42,6 +74,7 @@ export const DecisionForm: React.FC<DecisionFormProps> = ({ onSubmit, isLoading 
     }
 
     setValidationError(null);
+    clearFormDraft();
     onSubmit(opt1, opt2, context.trim() || undefined);
   };
 
@@ -98,10 +131,7 @@ export const DecisionForm: React.FC<DecisionFormProps> = ({ onSubmit, isLoading 
                 id="option-1-input"
                 rows={3}
                 value={option1}
-                onChange={(e) => {
-                  setOption1(e.target.value);
-                  if (validationError) setValidationError(null);
-                }}
+                onChange={(e) => handleOption1Change(e.target.value)}
                 placeholder={t.form.option1Placeholder}
                 className="w-full bg-white border border-slate-200 rounded-lg p-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500 resize-none shadow-2xs"
               />
@@ -119,10 +149,7 @@ export const DecisionForm: React.FC<DecisionFormProps> = ({ onSubmit, isLoading 
                 id="option-2-input"
                 rows={3}
                 value={option2}
-                onChange={(e) => {
-                  setOption2(e.target.value);
-                  if (validationError) setValidationError(null);
-                }}
+                onChange={(e) => handleOption2Change(e.target.value)}
                 placeholder={t.form.option2Placeholder}
                 className="w-full bg-white border border-slate-200 rounded-lg p-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 resize-none shadow-2xs"
               />
@@ -151,7 +178,7 @@ export const DecisionForm: React.FC<DecisionFormProps> = ({ onSubmit, isLoading 
                     type="button"
                     onClick={() => {
                       setShowContext(false);
-                      setContext('');
+                      handleContextChange('');
                     }}
                     className="text-xs font-medium text-slate-400 hover:text-slate-600 cursor-pointer"
                   >
@@ -162,7 +189,7 @@ export const DecisionForm: React.FC<DecisionFormProps> = ({ onSubmit, isLoading 
                   id="context-input"
                   type="text"
                   value={context}
-                  onChange={(e) => setContext(e.target.value)}
+                  onChange={(e) => handleContextChange(e.target.value)}
                   placeholder={t.form.contextPlaceholder}
                   className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500 shadow-2xs"
                 />

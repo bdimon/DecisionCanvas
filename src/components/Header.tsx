@@ -1,5 +1,5 @@
 import React from 'react';
-import { SlidersHorizontal, Sparkles, Printer, Smartphone, Monitor, Globe } from 'lucide-react';
+import { SlidersHorizontal, Sparkles, Printer, Smartphone, Monitor, Globe, Clock, CheckCircle2 } from 'lucide-react';
 import { PWAInstallButton } from './PWAInstallButton';
 import { useLanguage } from '../i18n/LanguageContext';
 
@@ -9,6 +9,9 @@ interface HeaderProps {
   onPrint?: () => void;
   isAndroidView: boolean;
   onToggleAndroidView: () => void;
+  historyCount?: number;
+  onOpenHistory?: () => void;
+  lastSavedText?: string | null;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -16,7 +19,10 @@ export const Header: React.FC<HeaderProps> = ({
   onReset,
   onPrint,
   isAndroidView,
-  onToggleAndroidView
+  onToggleAndroidView,
+  historyCount = 0,
+  onOpenHistory,
+  lastSavedText,
 }) => {
   const { language, toggleLanguage, t } = useLanguage();
 
@@ -34,6 +40,15 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="hidden sm:inline-block text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-700 uppercase tracking-wider">
               {t.header.versionBadge}
             </span>
+            {hasResult && (
+              <span
+                className="hidden xl:inline-flex items-center gap-1 text-[10px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/70"
+                title={lastSavedText || t.storage.savedLocally}
+              >
+                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                <span>{t.storage.savedLocally}</span>
+              </span>
+            )}
           </div>
           <p className="text-[11px] text-slate-500 font-medium tracking-wide">
             {t.header.subtitle}
@@ -42,6 +57,25 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       <div className="flex items-center gap-2">
+        {/* Saved Analyses History Button */}
+        {onOpenHistory && (
+          <button
+            type="button"
+            id="header-history-btn"
+            onClick={onOpenHistory}
+            className="px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg transition-colors inline-flex items-center gap-1.5 cursor-pointer shadow-2xs"
+            title={t.storage.historyButton}
+          >
+            <Clock className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+            <span className="hidden sm:inline">{t.storage.historyButton}</span>
+            {historyCount > 0 && (
+              <span className="px-1.5 py-0.2 bg-indigo-100 text-indigo-800 text-[10px] font-bold rounded-full">
+                {historyCount}
+              </span>
+            )}
+          </button>
+        )}
+
         {/* Virtual Android View Toggle Button */}
         <button
           type="button"
