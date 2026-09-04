@@ -255,13 +255,55 @@ ${context ? `ДОПОЛНИТЕЛЬНЫЙ КОНТЕКСТ И ОГРАНИЧЕН
     let parsedData: any = null;
     let successfulModel = '';
 
+    // Per-model candidate timeout (18s) to prevent request hanging indefinitely
+    const MODEL_TIMEOUT_MS = 18000;
+
+    // Track client disconnection to abort AI calls if the client cancels or leaves
+    let isClientDisconnected = false;
+    req.on('close', () => {
+      isClientDisconnected = true;
+    });
+
     for (const modelName of candidateModels) {
+      if (isClientDisconnected) {
+        console.log('Client disconnected, aborting AI analysis loop.');
+        break;
+      }
+
+      const controller = new AbortController();
+      let timeoutId: NodeJS.Timeout | null = setTimeout(() => {
+        controller.abort();
+      }, MODEL_TIMEOUT_MS);
+
+      // Also abort if the client drops connection mid-flight
+      const onReqClose = () => {
+        controller.abort();
+      };
+      req.on('close', onReqClose);
+
       try {
-        const response = await ai.models.generateContent({
+        const responsePromise = ai.models.generateContent({
           model: modelName,
           contents: prompt,
-          config: contentConfig,
+          config: {
+            ...contentConfig,
+            abortSignal: controller.signal,
+          },
         });
+
+        // Promise race guarantees we break out even if an underlying HTTP socket hangs
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          controller.signal.addEventListener('abort', () => {
+            reject(new Error(`Model ${modelName} request timed out after ${MODEL_TIMEOUT_MS}ms or was aborted`));
+          }, { once: true });
+        });
+
+        const response = await Promise.race([responsePromise, timeoutPromise]);
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        req.off('close', onReqClose);
 
         const rawText = response.text?.trim() || '{}';
         parsedData = JSON.parse(rawText);
@@ -270,15 +312,25 @@ ${context ? `ДОПОЛНИТЕЛЬНЫЙ КОНТЕКСТ И ОГРАНИЧЕН
           break;
         }
       } catch (callErr: any) {
-        // If 503 (high demand) or 429 (rate limit), log info and try the next model candidate
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        req.off('close', onReqClose);
+        controller.abort();
+
         const errMsg = String(callErr?.message || callErr);
-        const isTemporary = errMsg.includes('503') || errMsg.includes('demand') || errMsg.includes('429') || errMsg.includes('UNAVAILABLE');
-        if (isTemporary) {
-          console.log(`Model ${modelName} temporarily busy, attempting fallback model...`);
+        const isTimeout = errMsg.includes('timed out') || errMsg.includes('Timeout') || callErr?.name === 'AbortError';
+        const isTemporary = isTimeout || errMsg.includes('503') || errMsg.includes('demand') || errMsg.includes('429') || errMsg.includes('UNAVAILABLE');
+
+        if (isTimeout) {
+          console.warn(`Model ${modelName} timed out after ${MODEL_TIMEOUT_MS}ms, attempting fallback model...`);
+        } else if (isTemporary) {
+          console.log(`Model ${modelName} temporarily busy (${errMsg}), attempting fallback model...`);
           // Brief pause before trying alternative model
-          await new Promise((resolve) => setTimeout(resolve, 800));
+          await new Promise((resolve) => setTimeout(resolve, 600));
         } else {
-          console.log(`Notice: Model ${modelName} returned notice, trying next candidate.`);
+          console.log(`Notice: Model ${modelName} returned notice (${errMsg}), trying next candidate.`);
         }
       }
     }

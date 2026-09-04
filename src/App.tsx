@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Header } from './components/Header';
 import { DecisionForm } from './components/DecisionForm';
 import { ProsConsView } from './components/ProsConsView';
@@ -92,9 +92,19 @@ export default function App() {
     }
   }, [analysis, isUsingAi]);
 
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   const handleTabChange = (tab: ActiveTab) => {
     setActiveTab(tab);
     saveActiveTab(tab);
+  };
+
+  const handleCancelAnalysis = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsLoading(false);
   };
 
   const handleStartAnalysis = async (option1: string, option2: string, context?: string) => {
@@ -111,14 +121,28 @@ export default function App() {
       return;
     }
 
+    // Cancel any previous pending request before starting a new one
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setIsLoading(true);
     setError(null);
+
+    // Client-side safety timeout (35s) so the app never hangs indefinitely
+    const CLIENT_TIMEOUT_MS = 35000;
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, CLIENT_TIMEOUT_MS);
 
     try {
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ option1: opt1, option2: opt2, context: ctx, language }),
+        signal: controller.signal,
       });
 
       if (!response.ok) {
@@ -155,7 +179,15 @@ export default function App() {
       setHistoryItems(updatedHistory);
       setHasRestoredSession(false);
     } catch (err: any) {
-      // Resilient fallback for server downtime / offline mode, but ONLY with valid non-empty options
+      clearTimeout(timeoutId);
+
+      // If cancelled by the user clicking "Cancel", stop gracefully
+      if (controller.signal.aborted && abortControllerRef.current === null) {
+        setError(language === 'en' ? 'Analysis was cancelled.' : 'Анализ был отменён пользователем.');
+        return;
+      }
+
+      // Resilient fallback for server timeout / network failure / offline mode
       console.log('Notice: Fallback engine activated on client due to error:', err?.message);
       try {
         const local = generateLocalAnalysis(opt1, opt2, ctx, language);
@@ -165,10 +197,22 @@ export default function App() {
         const updatedHistory = saveToHistory(local, false);
         setHistoryItems(updatedHistory);
         setHasRestoredSession(false);
+
+        if (controller.signal.aborted || err?.name === 'AbortError') {
+          setError(
+            language === 'en'
+              ? 'Remote service timed out. Displaying instant expert analysis instead.'
+              : 'Время ожидания ответа сервера истекло. Отображён встроенный экспертный анализ.'
+          );
+        }
       } catch (fallbackErr: any) {
         setError(fallbackErr.message || (language === 'en' ? 'Failed to perform analysis' : 'Ошибка при анализе вариантов'));
       }
     } finally {
+      clearTimeout(timeoutId);
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
       setIsLoading(false);
     }
   };
@@ -270,6 +314,7 @@ export default function App() {
         <DecisionForm
           onSubmit={handleStartAnalysis}
           isLoading={isLoading}
+          onCancel={handleCancelAnalysis}
         />
 
         {error && (

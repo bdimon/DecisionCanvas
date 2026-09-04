@@ -8,9 +8,10 @@ import { saveFormDraft, loadFormDraft, clearFormDraft } from '../utils/storage';
 interface DecisionFormProps {
   onSubmit: (option1: string, option2: string, context?: string) => void;
   isLoading: boolean;
+  onCancel?: () => void;
 }
 
-export const DecisionForm: React.FC<DecisionFormProps> = ({ onSubmit, isLoading }) => {
+export const DecisionForm: React.FC<DecisionFormProps> = ({ onSubmit, isLoading, onCancel }) => {
   const { language, t } = useLanguage();
   const [option1, setOption1] = useState('');
   const [option2, setOption2] = useState('');
@@ -206,12 +207,22 @@ export const DecisionForm: React.FC<DecisionFormProps> = ({ onSubmit, isLoading 
           )}
 
           {/* Action Button */}
-          <div className="pt-2 flex items-center justify-end">
+          <div className="pt-2 flex items-center justify-end space-x-2">
+            {isLoading && onCancel && (
+              <button
+                type="button"
+                id="cancel-analysis-btn"
+                onClick={onCancel}
+                className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-sm rounded-lg transition-all cursor-pointer border border-slate-200"
+              >
+                <span>{language === 'en' ? 'Cancel' : 'Отмена'}</span>
+              </button>
+            )}
             <button
               type="submit"
               id="start-analysis-btn"
               disabled={isLoading}
-              className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white font-semibold text-sm rounded-lg shadow-md shadow-indigo-100 transition-all disabled:cursor-not-allowed cursor-pointer"
+              className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-semibold text-sm rounded-lg shadow-md shadow-indigo-100 transition-all disabled:cursor-not-allowed cursor-pointer"
             >
               {isLoading ? (
                 <>
