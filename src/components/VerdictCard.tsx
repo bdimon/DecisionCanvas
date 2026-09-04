@@ -28,6 +28,11 @@ export const VerdictCard: React.FC<VerdictCardProps> = ({ analysis, calculatedWi
     ? option2Title
     : t.verdict.tie;
 
+  const isWinnerOverridden = activeWinner !== verdict.winner && activeWinner !== 'tie';
+  const activeConfidence = isWinnerOverridden
+    ? Math.min(92, Math.max(55, Math.round(50 + Math.abs(calculatedWinner.score1 - calculatedWinner.score2) * 1.6)))
+    : verdict.confidenceScore;
+
   const handleCopyMarkdown = () => {
     const md = `# ${language === 'en' ? 'Decision Analysis Report' : 'Отчет по выбору решения'}
 
@@ -113,17 +118,26 @@ ${comparisonTable.map(c => `| ${c.title} | ${c.weight}x | ${c.option1Score}/10 (
         {/* Top Winner Banner */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
           <div className="flex items-start space-x-3.5">
-            <div className="w-12 h-12 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm">
-              <Trophy className="w-6 h-6 text-white" />
+            <div className={`w-12 h-12 rounded-xl ${activeWinner === 'tie' ? 'bg-indigo-600' : 'bg-amber-500'} text-white flex items-center justify-center shrink-0 shadow-sm`}>
+              {activeWinner === 'tie' ? <Scale className="w-6 h-6 text-white" /> : <Trophy className="w-6 h-6 text-white" />}
             </div>
             <div>
-              <div className="flex items-center space-x-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200/60">
-                  {t.verdict.winnerTitle}
+              <div className="flex items-center space-x-2 flex-wrap gap-y-1">
+                <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${
+                  activeWinner === 'tie'
+                    ? 'text-indigo-700 bg-indigo-50 border-indigo-200/60'
+                    : 'text-amber-700 bg-amber-50 border-amber-200/60'
+                }`}>
+                  {activeWinner === 'tie' ? t.verdict.tieTitle : t.verdict.winnerTitle}
                 </span>
                 <span className="text-xs font-medium text-slate-400">
-                  {t.verdict.confidence}: {verdict.confidenceScore}%
+                  {t.verdict.confidence}: {activeConfidence}%
                 </span>
+                {isWinnerOverridden && (
+                  <span className="text-[10px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
+                    {language === 'en' ? 'Adjusted by custom weights' : 'Скорректировано весами'}
+                  </span>
+                )}
               </div>
               <h3 className="text-xl sm:text-2xl font-black text-slate-900 mt-1 tracking-tight">
                 {activeWinnerTitle}
@@ -170,7 +184,13 @@ ${comparisonTable.map(c => `| ${c.title} | ${c.weight}x | ${c.option1Score}/10 (
             {t.verdict.summary}
           </h4>
           <p className="text-sm sm:text-base text-slate-800 leading-relaxed font-normal">
-            {verdict.summary}
+            {isWinnerOverridden ? (
+              language === 'en'
+                ? `Based on your custom weights and criterion scores, "${activeWinnerTitle}" currently leads with ${Math.round(calculatedWinner.score1)}% vs ${Math.round(calculatedWinner.score2)}%. ${verdict.summary}`
+                : `С учетом скорректированных вами весов и оценок критериев лидирует «${activeWinnerTitle}» (${Math.round(calculatedWinner.score1)}% против ${Math.round(calculatedWinner.score2)}%). ${verdict.summary}`
+            ) : (
+              verdict.summary
+            )}
           </p>
         </div>
 
