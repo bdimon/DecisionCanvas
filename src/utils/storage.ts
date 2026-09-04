@@ -17,7 +17,7 @@ const STORAGE_KEY_HISTORY = 'decision_lens_history';
 const STORAGE_KEY_FORM_DRAFT = 'decision_lens_form_draft';
 const STORAGE_KEY_ACTIVE_TAB = 'decision_lens_active_tab';
 
-const MAX_HISTORY_ITEMS = 25;
+const MAX_HISTORY_ITEMS = 15;
 
 /**
  * Safely checks if LocalStorage is available and accessible
@@ -29,6 +29,52 @@ function isLocalStorageAvailable(): boolean {
     window.localStorage.removeItem(testKey);
     return true;
   } catch {
+    return false;
+  }
+}
+
+/**
+ * Safely sets an item in LocalStorage with automatic quota recovery.
+ * If QuotaExceededError occurs, it progressively prunes older history items to preserve
+ * current application state and user data.
+ */
+function safeSetItem(key: string, value: string): boolean {
+  try {
+    window.localStorage.setItem(key, value);
+    return true;
+  } catch (error) {
+    const isQuotaError =
+      error instanceof DOMException &&
+      (error.name === 'QuotaExceededError' ||
+        error.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
+        error.code === 22 ||
+        error.code === 1014);
+
+    if (isQuotaError) {
+      console.warn(`LocalStorage quota exceeded while saving "${key}". Evicting older history to recover space...`);
+      try {
+        const rawHistory = window.localStorage.getItem(STORAGE_KEY_HISTORY);
+        if (rawHistory) {
+          const parsed = JSON.parse(rawHistory);
+          if (Array.isArray(parsed) && parsed.length > 3) {
+            // Trim to newest 3 items
+            const trimmed = parsed.slice(0, 3);
+            window.localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(trimmed));
+            // Try saving the target item again
+            window.localStorage.setItem(key, value);
+            return true;
+          } else if (key !== STORAGE_KEY_HISTORY) {
+            // Clear history completely to prioritize the current active analysis
+            window.localStorage.removeItem(STORAGE_KEY_HISTORY);
+            window.localStorage.setItem(key, value);
+            return true;
+          }
+        }
+      } catch (recoveryError) {
+        console.error('Failed recovery from QuotaExceededError:', recoveryError);
+      }
+    }
+    console.warn(`Unable to write to LocalStorage key "${key}":`, error);
     return false;
   }
 }
@@ -54,7 +100,7 @@ export function saveCurrentAnalysis(
       lastSavedAt: new Date().toISOString()
     };
 
-    window.localStorage.setItem(STORAGE_KEY_CURRENT, JSON.stringify(payload));
+    safeSetItem(STORAGE_KEY_CURRENT, JSON.stringify(payload));
   } catch (error) {
     console.warn('Unable to persist current analysis to LocalStorage:', error);
   }
@@ -129,7 +175,7 @@ export function saveToHistory(
     const filtered = currentHistory.filter(item => item.id !== historyEntry.id);
     const updated = [historyEntry, ...filtered].slice(0, MAX_HISTORY_ITEMS);
 
-    window.localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(updated));
+    safeSetItem(STORAGE_KEY_HISTORY, JSON.stringify(updated));
     return updated;
   } catch (error) {
     console.warn('Failed to save analysis to history in LocalStorage:', error);
@@ -167,7 +213,7 @@ export function deleteFromHistory(id: string): SavedHistoryItem[] {
   try {
     const current = loadHistory();
     const updated = current.filter(item => item.id !== id);
-    window.localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(updated));
+    safeSetItem(STORAGE_KEY_HISTORY, JSON.stringify(updated));
     return updated;
   } catch (error) {
     console.warn('Failed to delete history item:', error);
@@ -198,7 +244,7 @@ export function saveFormDraft(draft: { option1: string; option2: string; context
       window.localStorage.removeItem(STORAGE_KEY_FORM_DRAFT);
       return;
     }
-    window.localStorage.setItem(STORAGE_KEY_FORM_DRAFT, JSON.stringify(draft));
+    safeSetItem(STORAGE_KEY_FORM_DRAFT, JSON.stringify(draft));
   } catch (error) {
     console.warn('Failed to save form draft:', error);
   }
@@ -238,7 +284,7 @@ export function clearFormDraft(): void {
 export function saveActiveTab(tab: string): void {
   if (!isLocalStorageAvailable()) return;
   try {
-    window.localStorage.setItem(STORAGE_KEY_ACTIVE_TAB, tab);
+    safeSetItem(STORAGE_KEY_ACTIVE_TAB, tab);
   } catch (error) {
     console.warn('Failed to save active tab:', error);
   }

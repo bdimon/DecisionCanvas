@@ -31,6 +31,21 @@ interface VerdictCardProps {
   onResetVerdict?: () => void;
 }
 
+// Clean helper to prevent circular or deeply nested originalVerdict references
+function getCleanBaseVerdict(v: DecisionVerdict): DecisionVerdict {
+  const source = v.originalVerdict ? getCleanBaseVerdict(v.originalVerdict) : v;
+  return {
+    winner: source.winner,
+    winnerTitle: source.winnerTitle,
+    confidenceScore: source.confidenceScore,
+    summary: source.summary,
+    keyDrivers: [...source.keyDrivers],
+    tradeOffSummary: source.tradeOffSummary,
+    recommendedNextSteps: [...source.recommendedNextSteps],
+    customizedLanguage: source.customizedLanguage
+  };
+}
+
 export const VerdictCard: React.FC<VerdictCardProps> = ({
   analysis,
   calculatedWinner,
@@ -69,13 +84,22 @@ export const VerdictCard: React.FC<VerdictCardProps> = ({
       return verdict;
     }
     if (isWinnerOverridden) {
+      const baseOriginal = verdict.originalVerdict
+        ? getCleanBaseVerdict(verdict.originalVerdict)
+        : getCleanBaseVerdict(verdict);
       return {
         ...synthesized,
-        originalVerdict: verdict.originalVerdict || verdict
+        originalVerdict: baseOriginal
       };
     }
     return verdict;
   }, [verdict, isWinnerOverridden, synthesized]);
+
+  // Check if custom verdict was authored in a different language
+  const hasLanguageMismatch =
+    verdict.isCustomized &&
+    verdict.customizedLanguage &&
+    verdict.customizedLanguage !== language;
 
   // Editing state
   const [editForm, setEditForm] = useState<DecisionVerdict>({
@@ -103,10 +127,15 @@ export const VerdictCard: React.FC<VerdictCardProps> = ({
 
   const handleSaveEdit = () => {
     if (!onUpdateVerdict) return;
+    const baseOriginal = verdict.originalVerdict
+      ? getCleanBaseVerdict(verdict.originalVerdict)
+      : getCleanBaseVerdict(verdict);
+
     const updated: DecisionVerdict = {
       ...editForm,
       isCustomized: true,
-      originalVerdict: verdict.originalVerdict || verdict
+      customizedLanguage: language,
+      originalVerdict: baseOriginal
     };
     onUpdateVerdict(updated);
     setIsEditing(false);
@@ -118,10 +147,15 @@ export const VerdictCard: React.FC<VerdictCardProps> = ({
 
   const handleApplySynthesis = () => {
     if (!onUpdateVerdict) return;
+    const baseOriginal = verdict.originalVerdict
+      ? getCleanBaseVerdict(verdict.originalVerdict)
+      : getCleanBaseVerdict(verdict);
+
     const updated: DecisionVerdict = {
       ...synthesized,
       isCustomized: true,
-      originalVerdict: verdict.originalVerdict || verdict
+      customizedLanguage: language,
+      originalVerdict: baseOriginal
     };
     onUpdateVerdict(updated);
     setIsEditing(false);
@@ -365,6 +399,24 @@ ${comparisonTable.map(c => `| ${c.title} | ${c.weight}x | ${c.option1Score}/10 (
             </button>
           </div>
         </div>
+
+        {/* Language Mismatch Banner */}
+        {hasLanguageMismatch && !isEditing && (
+          <div className="bg-amber-50/90 border border-amber-200/80 rounded-xl p-3 my-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="flex items-center space-x-2 text-xs text-amber-900 font-medium">
+              <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>{t.verdict.languageMismatchNotice}</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleApplySynthesis}
+              className="inline-flex items-center justify-center space-x-1 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-white hover:bg-indigo-50 border border-indigo-200 rounded-lg transition-colors cursor-pointer shrink-0 shadow-2xs"
+            >
+              <Sparkles className="w-3 h-3 text-indigo-600" />
+              <span>{t.verdict.recalculateInLanguage}</span>
+            </button>
+          </div>
+        )}
 
         {/* Editing Controls Header when isEditing */}
         {isEditing && (

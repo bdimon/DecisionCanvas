@@ -234,9 +234,22 @@ export default function App() {
     setHasRestoredSession(false);
   };
 
+  const getBaseOriginalVerdict = (v: DecisionVerdict): DecisionVerdict => {
+    const base = v.originalVerdict ? getBaseOriginalVerdict(v.originalVerdict) : v;
+    return {
+      winner: base.winner,
+      winnerTitle: base.winnerTitle,
+      confidenceScore: base.confidenceScore,
+      summary: base.summary,
+      keyDrivers: [...base.keyDrivers],
+      tradeOffSummary: base.tradeOffSummary,
+      recommendedNextSteps: [...base.recommendedNextSteps]
+    };
+  };
+
   const handleUpdateProsCons = (updated: ProsConsResult) => {
     if (!analysis) return;
-    const originalVerdict = analysis.verdict.originalVerdict || analysis.verdict;
+    const originalVerdict = getBaseOriginalVerdict(analysis.verdict);
     const next = {
       ...analysis,
       prosCons: updated,
@@ -251,7 +264,7 @@ export default function App() {
 
   const handleUpdateComparisonTable = (updated: ComparisonCriterion[]) => {
     if (!analysis) return;
-    const originalVerdict = analysis.verdict.originalVerdict || analysis.verdict;
+    const originalVerdict = getBaseOriginalVerdict(analysis.verdict);
     const next = {
       ...analysis,
       comparisonTable: updated,

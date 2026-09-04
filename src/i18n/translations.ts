@@ -103,6 +103,8 @@ export interface TranslationDict {
     addDriver: string;
     addStep: string;
     remove: string;
+    languageMismatchNotice: string;
+    recalculateInLanguage: string;
   };
   pwa: {
     install: string;
@@ -268,6 +270,8 @@ export const translations: Record<Language, TranslationDict> = {
       addDriver: '+ Добавить фактор',
       addStep: '+ Добавить шаг',
       remove: 'Удалить',
+      languageMismatchNotice: 'Этот вердикт был отредактирован на другом языке.',
+      recalculateInLanguage: 'Синтезировать на текущем языке',
     },
     pwa: {
       install: 'Установить',
@@ -431,6 +435,8 @@ export const translations: Record<Language, TranslationDict> = {
       addDriver: '+ Add Driver',
       addStep: '+ Add Step',
       remove: 'Remove',
+      languageMismatchNotice: 'This verdict was customized in another language.',
+      recalculateInLanguage: 'Synthesize in current language',
     },
     pwa: {
       install: 'Install',

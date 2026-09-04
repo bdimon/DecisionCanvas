@@ -319,6 +319,11 @@ ${context ? `ДОПОЛНИТЕЛЬНЫЙ КОНТЕКСТ И ОГРАНИЧЕН
         req.off('close', onReqClose);
         controller.abort();
 
+        if (isClientDisconnected || req.destroyed || res.writableEnded) {
+          console.log('Client connection closed, stopping candidate evaluation.');
+          break;
+        }
+
         const errMsg = String(callErr?.message || callErr);
         const isTimeout = errMsg.includes('timed out') || errMsg.includes('Timeout') || callErr?.name === 'AbortError';
         const isTemporary = isTimeout || errMsg.includes('503') || errMsg.includes('demand') || errMsg.includes('429') || errMsg.includes('UNAVAILABLE');

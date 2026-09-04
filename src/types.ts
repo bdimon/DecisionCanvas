@@ -49,6 +49,7 @@ export interface DecisionVerdict {
   recommendedNextSteps: string[];
   isCustomized?: boolean;
   originalVerdict?: DecisionVerdict;
+  customizedLanguage?: 'ru' | 'en';
 }
 
 export interface AnalysisResult {
